@@ -99,7 +99,8 @@ int main(int argc, char** argv){
                 // read cmdline file
                 char cmdline_file_contents[PAGESIZE];
                 char cmdline_file[256];
-                memset(cmdline_file, 0, PAGESIZE);
+                memset(cmdline_file, 0, sizeof(cmdline_file));
+                memset(cmdline_file_contents, 0, PAGESIZE);
                 sprintf(cmdline_file, "/proc/%d/cmdline", atoi(&dir_entry_ptr->d_name[0]));
 
                 int fd = open(cmdline_file, O_RDONLY);
