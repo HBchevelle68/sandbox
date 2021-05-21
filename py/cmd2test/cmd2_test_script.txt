@@ -1,0 +1,5 @@
+hello
+dirlist blah
+hello
+alias create hi hello
+alias create ll dirlist
