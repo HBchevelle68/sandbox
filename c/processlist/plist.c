@@ -25,7 +25,7 @@ typedef struct proc_stats{
     int tty_nr;    // unused
     char* stime;
     struct stat fstat;
-    struct passwd uinfo;
+    struct passwd* uinfo;
 
 } proc_stats_t;
 
@@ -46,9 +46,9 @@ static void get_process_stats(char* proc_pid, proc_stats_t* pstat){
 
 
     /*
-     * 
+     * Open /proc/<pid>/stat and extract desired 
+     * info. Some info not used currently
      */
-
     // Open up file
     FILE *pid_path_fptr = fopen(pid_path_stat, "r");
 
@@ -59,12 +59,21 @@ static void get_process_stats(char* proc_pid, proc_stats_t* pstat){
     // Close
     fclose(pid_path_fptr);
 
-    // get creation time
+    /*
+     * Get /proc/<pid> creation time. in other
+     * words, get the creation time of the process
+     * will resue the results from stat after
+     */ 
     stat(pid_path, &pstat->fstat);
     struct tm * timeinfo = localtime(&pstat->fstat.st_ctime);
     pstat->stime = asctime(timeinfo);
     pstat->stime[strlen(pstat->stime)-1] = '\0';
 
+    /*
+     * Using results from prior stat call
+     * get user/group info
+     */
+    pstat->uinfo = getpwuid(pstat->fstat.st_uid);    
     
 }
 
@@ -79,7 +88,7 @@ int main(int argc, char** argv){
 
         // readdir to open next dir in 
         // link list
-        printf("%-10s %-10s %-10s %-28s %s\n","PID", "PPID", "STATE", "START", "COMMAND");
+        printf("%-20s %-10s %-10s %-10s %-28s %s\n","USER", "PID", "PPID", "STATE", "START", "COMMAND");
         while ((dir_entry_ptr = readdir(dir_ptr)) ){
             
             if(isdigit(dir_entry_ptr->d_name[0])){
@@ -100,7 +109,7 @@ int main(int argc, char** argv){
                 // cmdline isn't always populated 
                 char* cmdptr = cmdline_file_contents[0] ? cmdline_file_contents : pstats.cmd;
                 
-                printf("%-10d %-10d %-10c %-28s %s\n", pstats.pid, pstats.ppid, pstats.state, pstats.stime, cmdptr);
+                printf("%-20s %-10d %-10d %-10c %-28s %s\n", pstats.uinfo->pw_name, pstats.pid, pstats.ppid, pstats.state, pstats.stime, cmdptr);
             }
         }
 
