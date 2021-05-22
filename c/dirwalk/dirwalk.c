@@ -2,102 +2,102 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <regex.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <err.h>
- 
-enum {
-	WALK_OK = 0,
-	WALK_BADPATTERN,
-	WALK_NAMETOOLONG,
-	WALK_BADIO,
-};
- 
-#define WS_NONE		0
-#define WS_RECURSIVE	(1 << 0)
-#define WS_DEFAULT	WS_RECURSIVE
-#define WS_FOLLOWLINK	(1 << 1)	/* follow symlinks */
-#define WS_DOTFILES	(1 << 2)	/* per unix convention, .file is hidden */
-#define WS_MATCHDIRS	(1 << 3)	/* if pattern is used on dir names too */
- 
-int walk_recur(char *dname, regex_t *reg, int spec)
-{
-	struct dirent *dent;
-	DIR *dir;
-	struct stat st;
-	char fn[FILENAME_MAX];
-	int res = WALK_OK;
-	int len = strlen(dname);
-	if (len >= FILENAME_MAX - 1)
-		return WALK_NAMETOOLONG;
- 
-	strcpy(fn, dname);
-	fn[len++] = '/';
- 
-	if (!(dir = opendir(dname))) {
-		warn("can't open %s", dname);
-		return WALK_BADIO;
-	}
- 
-	errno = 0;
-	while ((dent = readdir(dir))) {
-		if (!(spec & WS_DOTFILES) && dent->d_name[0] == '.')
+#include <limits.h>
+#include <stdlib.h>
+
+int curr_depth = 1;
+int max_depth = 0;
+
+
+#define INC_DEPTH(d) ++d
+#define RESET_DEPTH(d) d=1
+
+
+int walk_dir_recursive(char* dir_to_walk, int flags){
+    
+    DIR *dir_ptr;
+    struct dirent *dir_entry_ptr;
+    struct stat file_stat = {};
+    char dir_path[FILENAME_MAX] = {};
+	int dir_path_len = strlen(dir_to_walk);
+    char* file_real_path = NULL;
+    char slash = '/';
+	
+    if (dir_path_len >= FILENAME_MAX - 1) {
+        printf("File name too long!\n");
+        return -1;
+    }
+		
+    // Need to keep the path
+	strcpy(dir_path, dir_to_walk);
+    if(dir_path[dir_path_len-1] != slash) {
+	    dir_path[dir_path_len++] = '/';
+    }
+
+    // Open directory
+    dir_ptr = opendir(dir_to_walk);
+    if(!dir_ptr){
+        printf("failure to open %s\n", dir_to_walk);
+        return 1;
+    }
+    
+    // Walk
+    while ((dir_entry_ptr = readdir(dir_ptr))) {
+
+        // Ignore '.' and '..'
+        if (!strcmp(dir_entry_ptr->d_name, ".") || !strcmp(dir_entry_ptr->d_name, ".."))
 			continue;
-		if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
-			continue;
- 
-		strncpy(fn + len, dent->d_name, FILENAME_MAX - len);
-		if (lstat(fn, &st) == -1) {
-			warn("Can't stat %s", fn);
-			res = WALK_BADIO;
+
+
+        strncpy(dir_path + dir_path_len, dir_entry_ptr->d_name, (FILENAME_MAX-dir_path_len));
+        if(lstat(dir_path, &file_stat) == -1) {
+			printf("Can't stat %s", dir_path);
 			continue;
 		}
- 
-		/* don't follow symlink unless told so */
-		if (S_ISLNK(st.st_mode) && !(spec & WS_FOLLOWLINK))
-			continue;
- 
-		/* will be false for symlinked dirs */
-		if (S_ISDIR(st.st_mode)) {
-			/* recursively follow dirs */
-			if ((spec & WS_RECURSIVE))
-				walk_recur(fn, reg, spec);
- 
-			if (!(spec & WS_MATCHDIRS)) continue;
-		}
- 
-		/* pattern match */
-		if (!regexec(reg, fn, 0, 0, 0)) puts(fn);
-	}
- 
-	if (dir) closedir(dir);
-	return res ? res : errno ? WALK_BADIO : WALK_OK;
+        
+        printf("%s\n", dir_path,curr_depth);
+        if(S_ISLNK(file_stat.st_mode)){
+            // For now Don't follow links
+            // can be compared against a flag
+            // on whether or not to ignore
+            continue;
+        }
+
+        if(S_ISDIR(file_stat.st_mode)){
+            // Depth first!
+            if(curr_depth == max_depth){
+                continue;
+            }
+            INC_DEPTH(curr_depth);
+            walk_dir_recursive(dir_path, 0);
+        }        
+    }
+
+    RESET_DEPTH(curr_depth);
+    return 0;
 }
- 
-int walk_dir(char *dname, char *pattern, int spec)
-{
-	regex_t r;
-	int res;
-	if (regcomp(&r, pattern, REG_EXTENDED | REG_NOSUB))
-		return WALK_BADPATTERN;
-	res = walk_recur(dname, &r, spec);
-	regfree(&r);
- 
-	return res;
-}
- 
-int main()
-{
-	int r = walk_dir("/home/ap/sshtest/wolfssl/wolfssl-4.3.0/wolfcrypt/src", ".\\.c$", WS_NONE|WS_MATCHDIRS);
-	switch(r) {
-	case WALK_OK:		break;
-	case WALK_BADIO:	err(1, "IO error");
-	case WALK_BADPATTERN:	err(1, "Bad pattern");
-	case WALK_NAMETOOLONG:	err(1, "Filename too long");
-	default:
-		err(1, "Unknown error?");
-	}
-	return 0;
+
+int main(int argc, char** argv){
+    
+    char* resolved_path = NULL;
+
+    if( argc != 2){
+        walk_dir_recursive((char*)"/", 0);
+    }
+    else{
+        resolved_path = realpath(argv[1], NULL);
+        if(resolved_path){
+            printf("%s\n",argv[1]);
+            walk_dir_recursive(resolved_path, 0);
+            free(resolved_path);
+        }
+        else{
+            printf("Invalid path: %s", argv[1]);
+        }
+    }
+
+    return 0;
 }
