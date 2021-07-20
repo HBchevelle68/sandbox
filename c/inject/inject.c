@@ -4,10 +4,16 @@
 #include <sys/types.h>
 #include <string.h>
 #include <dlfcn.h>
+#include <sys/wait.h>
+#include <sys/user.h>
 #include <unistd.h>
 
 #define ONEKB 1024
 //static size_t PAGE_SIZE = sysconf(_SC_PAGESIZE);
+
+
+char* payload = "\xb8\x3c\x00\x00\x00\xbf\x00\x00\x00\x00\x0f\x05";
+
 
 /**
  * @brief Searches memory maps for a library in a targeted 
@@ -82,7 +88,47 @@ void *findExeFreeSpaceAddr(pid_t pid) {
 	return start_addr;
 }
 
+void ptraceRead(int pid, unsigned long long addr, void *data, int len) {
+	long word = 0;
+	int i = 0;
+	char *ptr = (char *)data;
 
+	for (i=0; i < len; i+=sizeof(word), word=0) {
+		if ((word = ptrace(PTRACE_PEEKTEXT, pid, addr + i, NULL)) == -1) {;
+			printf("[!] Error reading process memory\n");
+			exit(1);
+		}
+		ptr[i] = word;
+	}
+}
+
+void ptraceWrite(int pid, unsigned long long addr, void *data, int len) {
+	long word = 0;
+	int i=0;
+
+	for(i=0; i < len; i+=sizeof(word), word=0) {
+		memcpy(&word, data + i, sizeof(word));
+		if (ptrace(PTRACE_POKETEXT, pid, addr + i, word) == -1) {;
+			printf("[!] Error writing to process memory\n");
+			exit(1);
+		}
+	}
+}
+
+
+int inject(int pid, void* dlopen_addr, void* payload, size_t payload_len){
+
+	struct user_regs_struct oldregs, regs;
+	int status;
+	unsigned char *oldcode;
+	void *freeaddr;
+	int x;
+
+	
+
+
+	return 0;
+}
 
 /**
  * 

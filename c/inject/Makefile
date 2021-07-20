@@ -1,7 +1,9 @@
 DIR := ${CURDIR}
+DUMPSC=	$(objdump -d ./stage0 |grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g')
+
 
 NASM= nasm
-NASMFLAGS= -felf64
+NASMFLAGS= -f elf64
 ASMLINK= ld
 ASMDBG= $(NASMFLAGS) -g -F dwarf
 
@@ -13,12 +15,17 @@ DBGCFLAGS= -Werror -Wall
 
 BINS= stage0 target-rel target-debug inject-rel inject-debug
 
-.PHONY: clean
 
-all: clean $(BINS)
+
+.PHONY: clean stage0-shellcode
+
+all: clean $(BINS) 
 
 stage0: stage0.o
 	@$(ASMLINK) $^ -o $@
+
+stage0-shellcode:
+	@printf '\\x' && objdump -d stage0 | grep "^ " | cut -f2 | tr -d ' ' | tr -d '\n' | sed 's/.\{2\}/&\\x /g'| head -c-3 | tr -d ' ' && echo ' '
 
 inject-rel: inject.o
 	$(call PT, Linking $^ -> $@)
