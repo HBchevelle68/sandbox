@@ -4,28 +4,46 @@ DUMPSC=	$(objdump -d ./stage0 |grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -
 
 NASM= nasm
 NASMFLAGS= -f elf64
-ASMLINK= ld
+ASMLINK= ld -m elf_x86_64
 ASMDBG= $(NASMFLAGS) -g -F dwarf
 
 CC= gcc -std=c11
 CFLAGS= -Werror -Wall
 LFLAGS = -ldl
-DBG= -g2 -Og
+DBG= -g3
 DBGCFLAGS= -Werror -Wall
 
-BINS= stage0 target-rel target-debug inject-rel inject-debug
+BINS= stage0 target-rel target-debug inject-rel inject-debug shellcode-test shellcode-test-debug
 
 
 
-.PHONY: clean stage0-shellcode
+.PHONY: clean stage0-dump-shellcode
 
 all: clean $(BINS) 
 
-stage0: stage0.o
-	@$(ASMLINK) $^ -o $@
+############ SHELLCODE  ############
 
-stage0-shellcode:
+stage0: stage0.o
+	$(call PT, Linking $^ -> $@)
+	@$(ASMLINK) $^ -o $@
+	$(call PG, $@ Done)
+
+stage0-dump-shellcode: stage0
 	@printf '\\x' && objdump -d stage0 | grep "^ " | cut -f2 | tr -d ' ' | tr -d '\n' | sed 's/.\{2\}/&\\x /g'| head -c-3 | tr -d ' ' && echo ' '
+
+shellcode-test: shelltest.o
+	$(call PT, Linking $^ -> $@)
+	@$(CC) $(CFLAGS) $^ $(LFLAGS) -o $@
+	$(call PG, $@ Done)
+
+shellcode-test-debug: shelltest-debug.o
+	$(call PT, Linking $^ -> $@)
+	@$(CC) $(DBGCFLAGS) $(DBG) $(LFLAGS) $^ -o $@
+	$(call PG, $@ Done)
+
+############ SHELLCODE  ############
+
+############ CORE TOOLS ############
 
 inject-rel: inject.o
 	$(call PT, Linking $^ -> $@)
@@ -33,9 +51,13 @@ inject-rel: inject.o
 	$(call PG, $@ Done)
 
 inject-debug: inject-debug.o
-	$(call PG, Linking $^ -> $@)
+	$(call PT, Linking $^ -> $@)
 	@$(CC) $(DBGCFLAGS) $(DBG) $(LFLAGS) $^ -o $@
 	$(call PG, $@ Done)
+
+############ CORE TOOLS ############
+
+############ TARGET BIN ############
 
 target-rel: target.o
 	$(call PT, Linking $^ -> $@)
@@ -44,9 +66,12 @@ target-rel: target.o
 
 target-debug: target-debug.o
 	$(call PT, Linking $^ -> $@)
-	@$(CC) $(CFLAGS) $^ $(LFLAGS) -o $@
+	@$(CC) $(DBGCFLAGS) $(DBG) $(LFLAGS) $^ -o $@
 	$(call PG, $@ Done)
 
+############ TARGET BIN ############
+
+############# GENERIC ##############
 %.o: %.asm
 	$(call PT, building $< -> $@)
 	@$(NASM) $(NASMFLAGS) $< -o $@
@@ -59,11 +84,17 @@ target-debug: target-debug.o
 	$(call PT, building $< -> $@)
 	@$(CC) -c $(DBG) $(DBGCFLAGS) $< -o $@
 
+lib%.o: %.c
+	$(call PT, building $< -> $@)
+	@$(CC)
+
 clean:
 	$(call PY, Full clean...)
-	@rm -f *.o $(BINS)
+	@rm -f *.o .gdbhistory core $(BINS)
 
-# Functions
+############# GENERIC ##############
+
+############ Functions ############
 # Print Yellow
 define PY
 	@echo "\033[38;5;227m[*] $(1) \033[0m"
@@ -76,7 +107,7 @@ endef
 define PG
 	@echo "\033[38;5;084m[+] $(1) \033[0m"
 endef
-
+############ Functions ############
 
 
 

