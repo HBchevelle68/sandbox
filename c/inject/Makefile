@@ -1,6 +1,4 @@
 DIR := ${CURDIR}
-DUMPSC=	$(objdump -d ./stage0 |grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g')
-
 
 NASM= nasm
 NASMFLAGS= -f elf64
@@ -10,87 +8,102 @@ ASMDBG= $(NASMFLAGS) -g -F dwarf
 CC= gcc -std=c11
 CFLAGS= -Werror -Wall
 LFLAGS = -ldl
+
+SOCFLAGS= -fpic 
+SOLFLAGS= -shared
+
 DBG= -g3
 DBGCFLAGS= -Werror -Wall
 
-BINS= stage0 target-rel target-debug inject-rel inject-debug shellcode-test shellcode-test-debug
+BINS= standalone-shellcode target-rel \
+	  target-debug inject-rel inject-debug \
+	  shellcode-test shellcode-test-debug libpayload
 
 
 
-.PHONY: clean stage0-dump-shellcode
+.PHONY: clean standalone-shellcode-dump-shellcode
 
 all: clean $(BINS) 
 
 ############ SHELLCODE  ############
 
-stage0: stage0.o
-	$(call PT, Linking $^ -> $@)
+standalone-shellcode: standalone-shellcode.o
+	$(call PT,Linking $^ -> $@)
 	@$(ASMLINK) $^ -o $@
-	$(call PG, $@ Done)
+	$(call PG,$@ Done)
 
-stage0-dump-shellcode: stage0
-	@printf '\\x' && objdump -d stage0 | grep "^ " | cut -f2 | tr -d ' ' | tr -d '\n' | sed 's/.\{2\}/&\\x /g'| head -c-3 | tr -d ' ' && echo ' '
+standalone-shellcode-dump-shellcode: standalone-shellcode
+	@printf '\\x' && objdump -d standalone-shellcode | grep "^ " | cut -f2 | tr -d ' ' | tr -d '\n' | sed 's/.\{2\}/&\\x /g'| head -c-3 | tr -d ' ' && echo ' '
 
 shellcode-test: shelltest.o
-	$(call PT, Linking $^ -> $@)
+	$(call PT,Linking $^ -> $@)
 	@$(CC) $(CFLAGS) $^ $(LFLAGS) -o $@
-	$(call PG, $@ Done)
+	$(call PG,$@ Done)
 
 shellcode-test-debug: shelltest-debug.o
-	$(call PT, Linking $^ -> $@)
+	$(call PT,Linking $^ -> $@)
 	@$(CC) $(DBGCFLAGS) $(DBG) $(LFLAGS) $^ -o $@
-	$(call PG, $@ Done)
+	$(call PG,$@ Done)
 
 ############ SHELLCODE  ############
 
+############ PAYLOAD (.so) ############
+
+libpayload: libpayload.o
+	$(call PT,Linking $^ -> $@)
+	@$(CC) $(LFLAGS) $(SOLFLAGS) $^ -o $@.so
+
+
+############ PAYLOAD (.so) ############
+
 ############ CORE TOOLS ############
 
-inject-rel: inject.o
-	$(call PT, Linking $^ -> $@)
+inject-rel: ptrace_utils.o inject.o
+	$(call PT,Linking $^ -> $@)
 	@$(CC) $(CFLAGS) $^ $(LFLAGS) -o $@
-	$(call PG, $@ Done)
+	$(call PG,$@ Done)
 
-inject-debug: inject-debug.o
-	$(call PT, Linking $^ -> $@)
+inject-debug: ptrace_utils-debug.o inject-debug.o
+	$(call PT,Linking $^ -> $@)
 	@$(CC) $(DBGCFLAGS) $(DBG) $(LFLAGS) $^ -o $@
-	$(call PG, $@ Done)
+	$(call PG,$@ Done)
 
 ############ CORE TOOLS ############
 
 ############ TARGET BIN ############
 
-target-rel: target.o
-	$(call PT, Linking $^ -> $@)
+target-rel: target.o 
+	$(call PT,Linking $^ -> $@)
 	@$(CC) $(CFLAGS) $^ $(LFLAGS) -o $@
-	$(call PG, $@ Done)
+	$(call PG,$@ Done)
 
 target-debug: target-debug.o
-	$(call PT, Linking $^ -> $@)
+	$(call PT,Linking $^ -> $@)
 	@$(CC) $(DBGCFLAGS) $(DBG) $(LFLAGS) $^ -o $@
-	$(call PG, $@ Done)
+	$(call PG,$@ Done)
 
 ############ TARGET BIN ############
 
 ############# GENERIC ##############
 %.o: %.asm
-	$(call PT, building $< -> $@)
+	$(call PT,Building $< -> $@)
 	@$(NASM) $(NASMFLAGS) $< -o $@
 
 %.o: %.c
-	$(call PT, building $< -> $@)
+	$(call PT,Building $< -> $@)
 	@$(CC) -c $(CFLAGS) $< -o $@
 
 %-debug.o: %.c
-	$(call PT, building $< -> $@)
+	$(call PT,Building $< -> $@)
 	@$(CC) -c $(DBG) $(DBGCFLAGS) $< -o $@
 
 lib%.o: %.c
-	$(call PT, building $< -> $@)
-	@$(CC)
+	$(call PT,Building $< -> $@)
+	@$(CC) -c $(CFLAGS) $(SOCFLAGS) $< -o $@
 
 clean:
-	$(call PY, Full clean...)
-	@rm -f *.o .gdbhistory core $(BINS)
+	$(call PY,Full clean...)
+	@rm -f *.o *.so .gdbhistory core  $(BINS)
 
 ############# GENERIC ##############
 
