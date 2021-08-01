@@ -56,10 +56,6 @@ int main(int argc, char* argv[]){
     unsigned long  libdlAddr;
     pid_t pid = getpid();
 
-    //libdlAddr = dlopen("libc.so.6", RTLD_LAZY);
-    //if (libdlAddr == NULL) {
-    //    printf("[!] Error opening libc.so.6\n");
-    //}
     libdlAddr = putils_findLibrary("libc", -1);
 
     libc_dlopen_sym_addr = getFunctionAddress("__libc_dlopen_mode");
@@ -69,7 +65,8 @@ int main(int argc, char* argv[]){
     
 
     while(1) {
-        
+        // Some nice debug prints to help you 
+        // figure out where you messed up
         printf("[*] pid: %u\n", pid);
         printf("[*] libc.so loaded at address %lx\n", libdlAddr);  
         printf("[*] __libc_dlopen_mode() found at address %p\n", libc_dlopen_sym_addr);

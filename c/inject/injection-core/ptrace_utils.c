@@ -122,8 +122,8 @@ int ptraceRead(int pid, unsigned long addr, void *out_ptr, uint32_t len) {
             bytesRead += sizeof(word);
             ptr[i++] = word;
         }
-        printf("[+] Read off %d bytes at %lx\n", bytesRead, addr);
 	}
+    printf("[+] Read off %d bytes at %lx\n", bytesRead, addr);
     return result;
 }
 
