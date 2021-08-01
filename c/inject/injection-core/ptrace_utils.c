@@ -34,7 +34,7 @@ void _ptrace_error_parse(){
             break;
 
         case EPERM:
-            printf("[-] (EPERM) Specified process cannot be traced");
+            printf("[-] (EPERM) Specified process cannot be traced\n");
             break;
 
         case ESRCH:
@@ -44,7 +44,7 @@ void _ptrace_error_parse(){
             break;
 
         default:
-            printf("[!] Unknown error value from ptrace... errno: %d",errno);
+            printf("[!] Unknown error value from ptrace... errno: %d\n",errno);
             break;
     }
 }
@@ -61,7 +61,7 @@ int ptraceAttach(int pid, int* out_status){
 
     // Attach to the target process
 	if(-1 == ptrace(PTRACE_ATTACH, pid, NULL, NULL)) {
-        printf("ptraceAttach failed");
+        printf("ptraceAttach failed\n");
         _ptrace_error_parse();
         result = EXIT_FAILURE;
     }
@@ -122,6 +122,7 @@ int ptraceRead(int pid, unsigned long addr, void *out_ptr, uint32_t len) {
             bytesRead += sizeof(word);
             ptr[i++] = word;
         }
+        printf("[+] Read off %d bytes at %lx\n", bytesRead, addr);
 	}
     return result;
 }
@@ -156,8 +157,10 @@ int ptraceWrite(int pid, unsigned long addr, void *buff_ptr, uint32_t len) {
 		    byteCount += sizeof(word);
         }
 	}
+    printf("[+] Injected %d bytes at %lx\n", byteCount, addr);
     return result;
 }
+
 
 /**
  * @brief Get a copy of processes current registers

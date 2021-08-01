@@ -21,7 +21,7 @@ SOLFLAGS= -shared
 DBG= -g3
 DBGCFLAGS= -Werror -Wall
 
-TGTS= standalone-shellcode target-rel \
+TGTS= standalone-shellcode loadso-shellcode target-rel \
 	  target-debug inject-rel inject-debug \
 	  shellcode-test shellcode-test-debug libpayload
 
@@ -33,6 +33,12 @@ standalone-shellcode:
 	@$(CALLMAKE) $(SHELLDIR) $@
 
 standalone-shellcode-dump-shellcode: 
+	@$(CALLMAKE) $(SHELLDIR) $@
+
+loadso-shellcode:
+	@$(CALLMAKE) $(SHELLDIR) $@
+
+loadso-shellcode-dump-shellcode: 
 	@$(CALLMAKE) $(SHELLDIR) $@
 
 shellcode-test:

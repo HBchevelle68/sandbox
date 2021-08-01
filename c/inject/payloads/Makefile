@@ -2,35 +2,40 @@ DIR := ${CURDIR}
 
 CC= gcc -std=c11
 CFLAGS= -Werror -Wall
-LFLAGS = -ldl
+LFLAGS = -ldl -pthread
 
 SOCFLAGS= -fpic 
 SOLFLAGS= -shared
 
 DBG= -g3
-DBGCFLAGS= -Werror -Wall
+DBGCFLAGS= $(CFLAGS)
 
-TGTS= libpayload
+TGTS= libpayload test-payload
 
 .PHONY: clean
 
 all: clean $(TGTS)
 
-libpayload: libpayload.o
+libpayload: payload.o
 	$(call PT,Linking $^ -> $@.so)
-	@$(CC) $(LFLAGS) $(SOLFLAGS) $^ -o $@.so
+	@$(CC) $(SOLFLAGS) $(LFLAGS) $^ -o $@.so
+
+test-payload: test-payload-norm.o
+	$(call PT,Linking $^ -> $@)
+	@$(CC) -ldl $^ -o $@
+
+%-norm.o: %.c
+	$(call PT,Building $< -> $@)
+	@$(CC) -c $(DBG) $(CFLAGS)  $< -o $@
+
 
 %.o: %.c
 	$(call PT,Building $< -> $@)
-	@$(CC) -c $(CFLAGS) $< -o $@
+	@$(CC) -c $(CFLAGS) $(SOCFLAGS) $< -o $@
 
 %-debug.o: %.c
 	$(call PT,Building $< -> $@)
-	@$(CC) -c $(DBG) $(DBGCFLAGS) $< -o $@
-
-lib%.o: %.c
-	$(call PT,Building $< -> $@)
-	@$(CC) -c $(CFLAGS) $(SOCFLAGS) $< -o $@
+	@$(CC) -c $(DBG) $(SOCFLAGS) $(DBGCFLAGS) $< -o $@
 
 clean:
 	$(call PY,Full clean of $(CURDIR))

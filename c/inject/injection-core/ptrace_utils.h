@@ -13,6 +13,7 @@ int ptraceAttach(pid_t pid, int* out_status);
 int ptraceDetach(pid_t pid);
 int ptraceRead(pid_t pid, unsigned long addr, void *out_ptr, uint32_t len);
 int ptraceWrite(pid_t pid, unsigned long addr, void *buff_ptr, uint32_t len);
+int ptraceSingleStep(pid_t pid, registers_t* regs);
 int ptraceGetRegs(pid_t pid, registers_t* regs);
 int ptraceSetRegs(pid_t pid, registers_t* regs);
 int ptraceCont(pid_t pid, int verifySIGTRAP, int* status);

@@ -5,7 +5,7 @@ NASMFLAGS= -f elf64
 ASMLINK= ld -m elf_x86_64
 ASMDBG= $(NASMFLAGS) -g -F dwarf
 
-TGTS= standalone-shellcode shellcode-test shellcode-test-debug
+TGTS= standalone-shellcode loadso-shellcode shellcode-test shellcode-test-debug
 
 .PHONY: clean
 
@@ -18,6 +18,14 @@ standalone-shellcode: standalone-shellcode.o
 
 standalone-shellcode-dump-shellcode: standalone-shellcode
 	@printf '\\x' && objdump -d standalone-shellcode | grep "^ " | cut -f2 | tr -d ' ' | tr -d '\n' | sed 's/.\{2\}/&\\x /g'| head -c-3 | tr -d ' ' && echo ' '
+
+loadso-shellcode: loadso-shellcode.o
+	$(call PT,Linking $^ -> $@)
+	@$(ASMLINK) $^ -o $@
+	$(call PG,$@ Done)
+
+loadso-shellcode-dump-shellcode: loadso-shellcode
+	@printf '\\x' && objdump -d loadso-shellcode | grep "^ " | cut -f2 | tr -d ' ' | tr -d '\n' | sed 's/.\{2\}/&\\x /g'| head -c-3 | tr -d ' ' && echo ' '
 
 shellcode-test: shelltest.o
 	$(call PT,Linking $^ -> $@)

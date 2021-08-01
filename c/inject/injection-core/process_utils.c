@@ -19,7 +19,7 @@
  * @return unsigned long long of starting address of library on 
  * 		   success or 0 on failure
  */
-unsigned long findLibrary(const char *library, pid_t pid) {
+unsigned long putils_findLibrary(const char *library, pid_t pid) {
     char mapFilename[ONEKB];
     char buffer[9076];
     FILE *fd;
@@ -45,7 +45,7 @@ unsigned long findLibrary(const char *library, pid_t pid) {
 	return addr;
 }
 
-unsigned long findExecAddr(pid_t pid) {
+unsigned long putils_findExecAddr(pid_t pid) {
 	FILE *fp = NULL;
 	char filename[30] = {};
 	char line[850] = {};

