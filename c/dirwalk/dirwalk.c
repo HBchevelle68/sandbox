@@ -11,10 +11,12 @@
 int curr_depth = 1;
 int max_depth = 0;
 
+const char SLASH = '/';
+const char SINGLE_DOT[] = ".";
+const char DOUBLE_DOT[] = "..";
 
-#define INC_DEPTH(d) ++d
+#define INC_DEPTH(d) ++(d)
 #define RESET_DEPTH(d) d=1
-
 
 int walk_dir_recursive(char* dir_to_walk, int flags){
     
@@ -23,24 +25,24 @@ int walk_dir_recursive(char* dir_to_walk, int flags){
     struct stat file_stat = {};
     char dir_path[FILENAME_MAX] = {};
 	int dir_path_len = strlen(dir_to_walk);
-    char* file_real_path = NULL;
-    char slash = '/';
 	
     if (dir_path_len >= FILENAME_MAX - 1) {
         printf("File name too long!\n");
         return -1;
     }
-		
+    
     // Need to keep the path
 	strcpy(dir_path, dir_to_walk);
-    if(dir_path[dir_path_len-1] != slash) {
-	    dir_path[dir_path_len++] = '/';
+    if(dir_path[dir_path_len-1] != SLASH) {
+	    dir_path[dir_path_len++] = SLASH;
     }
 
     // Open directory
     dir_ptr = opendir(dir_to_walk);
     if(!dir_ptr){
-        printf("failure to open %s\n", dir_to_walk);
+        printf("failure to open %s --- ernno %d \n", dir_to_walk, errno);
+        perror("Error: ");
+        printf("\n");
         return 1;
     }
     
@@ -48,7 +50,7 @@ int walk_dir_recursive(char* dir_to_walk, int flags){
     while ((dir_entry_ptr = readdir(dir_ptr))) {
 
         // Ignore '.' and '..'
-        if (!strcmp(dir_entry_ptr->d_name, ".") || !strcmp(dir_entry_ptr->d_name, ".."))
+        if (!strcmp(dir_entry_ptr->d_name, SINGLE_DOT) || !strcmp(dir_entry_ptr->d_name, DOUBLE_DOT))
 			continue;
 
 
@@ -58,14 +60,20 @@ int walk_dir_recursive(char* dir_to_walk, int flags){
 			continue;
 		}
         
-        printf("%s\n", dir_path,curr_depth);
+        printf("%s\n", dir_path);
         if(S_ISLNK(file_stat.st_mode)){
-            // For now Don't follow links
-            // can be compared against a flag
-            // on whether or not to ignore
+            /* 
+             * For now Don't follow links
+             * can be compared against a flag
+             * on whether or not to ignore
+             */ 
             continue;
         }
 
+        /* 
+         * If it is a directory follow 
+         * it to max depth
+         */
         if(S_ISDIR(file_stat.st_mode)){
             // Depth first!
             if(curr_depth == max_depth){
@@ -73,8 +81,13 @@ int walk_dir_recursive(char* dir_to_walk, int flags){
             }
             INC_DEPTH(curr_depth);
             walk_dir_recursive(dir_path, 0);
-        }        
+        }          
     }
+    /* REQUIRED!!
+     * If directory is not closed program 
+     * will run out of fd's
+     */
+    closedir(dir_ptr); 
 
     RESET_DEPTH(curr_depth);
     return 0;
