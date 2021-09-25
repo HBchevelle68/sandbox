@@ -9,10 +9,16 @@
 #include <stdlib.h>
 
 
+typedef struct {
+
+} entry_t;
+
 int nftw_callback(const char *file, const struct stat *file_stat, int flag, struct FTW *ftw_meta){
 
 
     printf("File: %s\n", file);
+    printf("Base: %s\n", (file+ftw_meta->base));
+    printf("Depth: %d\n", ftw_meta->level);
 
     switch (flag) {
         case FTW_F:
@@ -20,7 +26,10 @@ int nftw_callback(const char *file, const struct stat *file_stat, int flag, stru
             break;
         case FTW_D:
             // Directory
-            
+        
+        case FTW_SL:
+            // Symlink
+
         default:
             break;
     }
@@ -36,6 +45,7 @@ int find(char* path, char* pattern) {
 
 
 int main(int argc, char** argv) {
+    
     char *resolved_path = NULL;
     char cwd[PATH_MAX] = {};
     char *pattern = "*";
