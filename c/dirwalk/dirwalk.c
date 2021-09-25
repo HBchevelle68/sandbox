@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 int curr_depth = 1;
-int max_depth = 0;
+int max_depth = 1;
 
 const char SLASH = '/';
 const char SINGLE_DOT[] = ".";
