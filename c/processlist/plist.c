@@ -43,7 +43,7 @@ static void get_process_stats(char* proc_pid, proc_stats_t* pstat){
     memset(pid_path, 0, sizeof(pid_path));
     sprintf(pid_path, "/proc/%d", atoi(proc_pid));
     sprintf(pid_path_stat, "/proc/%d/stat", atoi(proc_pid));
-
+     
 
     /*
      * Open /proc/<pid>/stat and extract desired 
@@ -83,6 +83,8 @@ int main(int argc, char** argv){
     struct dirent *dir_entry_ptr;     
     dir_ptr = opendir ("/proc/");
     proc_stats_t pstats = {};
+
+    printf("size of time_t: %lu", sizeof(time_t));
 
     if (dir_ptr != NULL) {
 

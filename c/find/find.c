@@ -17,6 +17,8 @@
 #define RECUR_CONTINUE    0
 #define MAX_DEPTH_REACHED 1
 
+const long int AUGUST012021 = 1627790400;
+const long int AUGUST312021 = 1630468799;
 
 typedef struct{
     int max_depth;
@@ -85,11 +87,22 @@ int nftw_callback(const char *file, const struct stat *file_stat, int flag, stru
     switch (flag) {
         case FTW_F:
             // Normal File
+
+            // Match on glob filter
             if(FNM_NOMATCH == fnmatch(filter.glob_pattern, file, 0)){
                 // No match
                 break;
             }
-            
+            printf("Is %lu < %lu ?\n", file_stat->st_ctime, AUGUST012021);
+            printf("Is %lu > %lu ?\n", file_stat->st_ctime, AUGUST312021);
+            // Match on timestamp
+            if(file_stat->st_ctime < AUGUST012021 && file_stat->st_ctime > AUGUST312021){
+                // Outside time bound
+                printf("OUTSIDE TIME BOUND!\n");
+                break;
+            }
+
+
             build_perm_str(file_stat->st_mode, permissions);
             build_ftype_str(file_stat->st_mode, &file_type);
             usrinfo = getpwuid(file_stat->st_uid);
@@ -100,7 +113,7 @@ int nftw_callback(const char *file, const struct stat *file_stat, int flag, stru
             stime[strlen(stime)-1] = '\0';
 
             printf("%c%s %3lu %-16s %-16s %15lu %s %-s\n", 
-            file_type, permissions, file_stat->st_nlink, usrinfo->pw_name, grpinfo->gr_name, file_stat->st_size, stime, (file+ftw_meta->base));
+            file_type, permissions, file_stat->st_nlink, usrinfo->pw_name, grpinfo->gr_name, file_stat->st_size, stime, (file));
 
             break;
         case FTW_D:
@@ -126,7 +139,7 @@ int find(char* path, char* pattern) {
     filter.max_depth = 3;
     filter.glob_pattern = pattern;
 
-    return nftw(path, nftw_callback, 100, FTW_DEPTH);
+    return nftw(path, nftw_callback, 100, FTW_MOUNT);
 }
 
 

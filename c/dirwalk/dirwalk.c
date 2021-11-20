@@ -7,9 +7,12 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <pwd.h>
+#include <grp.h>
+#include <time.h>
 
 int curr_depth = 1;
-int max_depth = 1;
+int max_depth = 0;
 
 const char SLASH = '/';
 const char SINGLE_DOT[] = ".";
@@ -18,15 +21,53 @@ const char DOUBLE_DOT[] = "..";
 #define INC_DEPTH(d) ++(d)
 #define RESET_DEPTH(d) d=1
 
+static void build_perm_str(mode_t file_mode, char* permission_str){
+    
+    permission_str[0] = (file_mode & S_IRUSR) ? 'r' : '-';
+    permission_str[1] = (file_mode & S_IWUSR) ? 'w' : '-';
+    permission_str[2] = (file_mode & S_IXUSR) ? 'x' : '-';
+    permission_str[3] = (file_mode & S_IRGRP) ? 'r' : '-';
+    permission_str[4] = (file_mode & S_IWGRP) ? 'w' : '-';
+    permission_str[5] = (file_mode & S_IXGRP) ? 'x' : '-';
+    permission_str[6] = (file_mode & S_IROTH) ? 'r' : '-';
+    permission_str[7] = (file_mode & S_IWOTH) ? 'w' : '-';
+    permission_str[8] = (file_mode & S_IXOTH) ? 'x' : '-';
+    permission_str[9] = '\0';
+}
+
+static void build_ftype_str(mode_t file_mode, char* type) {
+
+    if(S_ISDIR(file_mode)){
+        *type = 'd';
+    }
+    else if(S_ISLNK(file_mode)){
+        *type = 'l';
+    }
+    else if(S_ISBLK(file_mode)){
+        *type = 'b';
+    }
+    else if(S_ISCHR(file_mode)){
+        *type = 'c';
+    }
+    else{
+        *type = '-';
+    }
+    
+}
+
 int walk_dir_recursive(char* dir_to_walk, int flags){
     
-    DIR *dir_ptr;
-    struct dirent *dir_entry_ptr;
-    struct stat file_stat = {};
-    char dir_path[FILENAME_MAX] = {};
+    DIR *dir_ptr = NULL;
+    struct dirent *dir_entry_ptr = NULL;
+    struct stat file_stat = {0};
+    char dir_path[PATH_MAX] = {0};
 	int dir_path_len = strlen(dir_to_walk);
+    char file_type;
+    char permissions[10];
+    //struct passwd* usrinfo = {0};
+    //struct group* grpinfo = {0};
 	
-    if (dir_path_len >= FILENAME_MAX - 1) {
+    if (dir_path_len >= PATH_MAX - 1) {
         printf("File name too long!\n");
         return -1;
     }
@@ -37,6 +78,7 @@ int walk_dir_recursive(char* dir_to_walk, int flags){
 	    dir_path[dir_path_len++] = SLASH;
     }
 
+    printf("%s:\n", dir_to_walk);
     // Open directory
     dir_ptr = opendir(dir_to_walk);
     if(!dir_ptr){
@@ -48,19 +90,32 @@ int walk_dir_recursive(char* dir_to_walk, int flags){
     
     // Walk
     while ((dir_entry_ptr = readdir(dir_ptr))) {
+        //printf("Entry: %s\n", dir_entry_ptr->d_name);
 
         // Ignore '.' and '..'
         if (!strcmp(dir_entry_ptr->d_name, SINGLE_DOT) || !strcmp(dir_entry_ptr->d_name, DOUBLE_DOT))
 			continue;
 
 
-        strncpy(dir_path + dir_path_len, dir_entry_ptr->d_name, (FILENAME_MAX-dir_path_len));
+        strncpy(dir_path + dir_path_len, dir_entry_ptr->d_name, (PATH_MAX-dir_path_len));
         if(lstat(dir_path, &file_stat) == -1) {
 			printf("Can't stat %s", dir_path);
 			continue;
 		}
         
-        printf("%s\n", dir_path);
+        build_perm_str(file_stat.st_mode, permissions);
+        build_ftype_str(file_stat.st_mode, &file_type);
+        //usrinfo = getpwuid(file_stat.st_uid);
+        //grpinfo = getgrgid(file_stat.st_gid);
+        struct tm * timeinfo = localtime(&file_stat.st_mtim.tv_sec);
+        char* stime = asctime(timeinfo);
+        
+        stime[strlen(stime)-1] = '\0';
+        /*
+        printf("%c%s %3lu %-16s %-16s %15lu %s %-s\n", 
+        file_type, permissions, file_stat.st_nlink, usrinfo->pw_name, grpinfo->gr_name, file_stat.st_size, stime, dir_path);
+        */
+        printf("Entry re-built: %s\n", dir_path);
         if(S_ISLNK(file_stat.st_mode)){
             /* 
              * For now Don't follow links
