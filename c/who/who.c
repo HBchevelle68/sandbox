@@ -4,24 +4,40 @@
 #include <utmp.h>
 #include <time.h>
 
+// Some helpers
 #define NMEMB 100
 #define UTMPSZ (sizeof(struct utmp))
 #define MAXTIMESZ 32
 
-// Stolen
-#define ISSLASH(C) ((C) == '/')
-#define HAS_DEVICE(Filename) ((void) (Filename), 0)
-#define FILE_SYSTEM_PREFIX_LEN(Filename) ((void) (Filename), 0)
-#define FILE_SYSTEM_DRIVE_PREFIX_CAN_BE_RELATIVE 0
-#define IS_ABSOLUTE_FILE_NAME(Filename) ISSLASH ((Filename)[0])
-#define IS_RELATIVE_FILE_NAME(Filename) (! ISSLASH ((Filename)[0]))
-#define IS_FILE_NAME_WITH_DIR(Filename) (strchr ((Filename), '/') != NULL)
+// From gnulib filename.h
+// pre-fixing with MY_ to prevent possible conflict
+#define MY_ISSLASH(C) ((C) == '/')
+#define MY_HAS_DEVICE(Filename) ((void) (Filename), 0)
+#define MY_FILE_SYSTEM_PREFIX_LEN(Filename) ((void) (Filename), 0)
+#define MY_IS_ABSOLUTE_FILE_NAME(Filename) ISSLASH ((Filename)[0])
+#define MY_IS_RELATIVE_FILE_NAME(Filename) (! ISSLASH ((Filename)[0]))
+#define MY_IS_FILE_NAME_WITH_DIR(Filename) (strchr ((Filename), '/') != NULL)
 
-void get_time_str(time_t tv_sec, char *out_time){
+// From gnulib who.c
+// pre-fixing with MY_ to prevent possible conflict
+#define MY_DEV_DIR_WITH_TRAILING_SLASH "/dev/"
+#define MY_DEV_DIR_LEN (sizeof (MY_DEV_DIR_WITH_TRAILING_SLASH) - 1)
+
+
+/**
+ * @brief Convert struct ut_tv.sec to a human-readable timestring
+ * 
+ * @param[in] tv_sec struct ut_tv.sec from entry cast as a time_t for conversion
+ * @param[out] out_time pointer to out buffer for time string, min 32-bytes
+ * 
+ * @return outtime will contain the converted time string on success
+ * or no change at all on error
+ */
+size_t get_time_str(time_t tv_sec, char *out_time){
 
     struct tm * timeinfo = localtime(&tv_sec);
 
-    strftime(out_time, MAXTIMESZ, "%F %T", timeinfo);
+    return strftime(out_time, MAXTIMESZ, "%F %T", timeinfo);
 }
 
 int main(int argc, char **argv) {
@@ -93,12 +109,18 @@ int main(int argc, char **argv) {
         char time_str[MAXTIMESZ]; 
         get_time_str((time_t)utmp_log[i].ut_tv.tv_sec, time_str);
 
+        //Resolve line
+        char line_str[sizeof(UT_LINESIZE) + MY_DEV_DIR_LEN + 1];
+        resolve_line_str(utmp_log[i].line_str, line_str);
+
 
         printf("%10s %10s %-20s %-16s\n", 
             utmp_log[i].ut_user,
             utmp_log[i].ut_line,
             time_str,
             utmp_log[i].);
+        
+        memset(&time_str, 0, MAXTIMESZ);
     }
 
 
