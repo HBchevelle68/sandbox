@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <errno.h>
+#include <string.h>
 #include <stdlib.h>
 #include <utmp.h>
 #include <time.h>
@@ -23,6 +24,36 @@
 #define MY_DEV_DIR_WITH_TRAILING_SLASH "/dev/"
 #define MY_DEV_DIR_LEN (sizeof (MY_DEV_DIR_WITH_TRAILING_SLASH) - 1)
 
+/**
+ * @brief Resolves the ut_line member of a struct utmp.
+ * decent portions of this have been take from GNU who.c
+ * but simplified since I don't need to support windows
+ * 
+ * @param[in] utmp_ut_line The struct utmp* you wish to resolve the ut_line member of
+ * @param[out] resolved_line result of resolution of utmp_ut_line param
+ */
+void resolve_line_idle_str(struct utmp* entry, char* resolved_line, char* idle){
+    
+    char* rlptr = resolved_line;
+    
+    /* Copy ut_line into LINE, prepending '/dev/' if ut_line is not
+     * already an absolute file name.  Some systems may put the full,
+     * absolute file name in ut_line.
+     */
+    if(!MY_IS_ABSOLUTE_FILE_NAME(entry->ut_line)){
+        rlptr = stpcpy(resolved_line, entry->ut_line);
+    }
+    /**
+     * If the above conditional is take, this line behaves sematically more 
+     * like a strncat. 
+     * If the above conditional is not taken, then this will copy
+     * the ut_line into the beginning of the array rlptr is pointing to 
+     */
+    strncpy(rlptr, entry->ut_line, sizeof(entry->ut_line))
+
+
+    return;
+}
 
 /**
  * @brief Convert struct ut_tv.sec to a human-readable timestring
