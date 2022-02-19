@@ -1,9 +1,3 @@
-# This is a generic makefile designed for quick
-# deployment and usage in a flat directory
-#
-# Best used to get off the ground quickly
-# and then tailor to your needs
-
 DIR := ${CURDIR}
 
 CC= gcc
