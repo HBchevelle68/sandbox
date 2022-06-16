@@ -1,16 +1,22 @@
 # This is a generic makefile designed for quick
-# deployment and usage in a flat directory
+# Deployment and usage in a flat directory
 #
 # Best used to get off the ground quickly
 # and then tailor to your needs
 
 DIR := ${CURDIR}
+NAME := $(shell basename $(CURDIR))
+BIN  = $(DIR)/build
+HASH = $(BIN)/hashes
+INFO = $(BIN)/bininfo
+
+BINLIST = $(shell ls -p $(BIN) | grep -v /)
+FINDTREE= $(shell which tree)
 
 # tinygo compiler and linker
+# Default to optimize for size. See tinygo -h for options
 TINYGOCC=tinygo
-TINYGOFLAGS= -opt z # Default to optimize for size. See tinygo -h for options
-
-TINYGODBGFLAGS= -opt 0 
+TINYGOFLAGS= -opt z 
 
 # Standard go compiler and linker
 GOCC=go
@@ -19,33 +25,39 @@ GORUN=run
 GOLFLAGS=-ldflags="-s -w"
 
 
-TGTS=release-bin-stdgo debug-bin-stdgo
-PCKTGTS=release-bin-stdgo-upx
-
 .PHONY: clean
 
-all: clean release $(TGTS)
+all: clean init-dirs build-stdgo misc success
 
-release-bin-stdgo: $(DIR)
-	$(call PT,building $^ -> $@)
-	$(GOCC) $(GOBUILD) $(LFLAGS) -o $@ $^ 
-	$(call PG,$@ Done)
-	$(call PT,packing $^ -> $@)
-	@upx --best --lzma $@ -o $@-upx
-	$(call PG,$@-upx Done)
+build-stdgo: $(DIR)
+	$(call PT,building $^ -> $(NAME))
+	@$(GOCC) $(GOBUILD) $(LFLAGS) -o $(BIN)/$(NAME)-debug $^ 
+	$(call PG,$(NAME) Done)
+	$(call PT,striping $(NAME)-debug -> $(NAME)-rel-stripped)
+	@strip $(BIN)/$(NAME)-debug -o $(BIN)/$(NAME)-rel-stripped
+	$(call PG,$(NAME) Done)
+	$(call PT,packing $(NAME)-rel-stripped -> $(NAME)-stripped-upx)
+	@upx --best --lzma $(BIN)/$(NAME)-rel-stripped -o $(BIN)/$(NAME)-rel-stripped-upx
+	$(call PG,$(NAME)-stripped-upx Done)
 
-release-bin-stdgo-upx:
-	@upx --best --lzma
+init-dirs:
+	@mkdir -p $(HASH)
+	@mkdir -p $(INFO)
+	@mkdir -p $(BIN)	
 
-debug-bin-stdgo: #$(DBGOBJS)
-	$(call PT,Linking $^ -> $@)
-	@$(CC) $(DBGCFLAGS) $(DBG) $(LFLAGS) -o $@ $^ 
-	$(call PG,$@ Done)
+misc: 
+	@md5sum $(BIN)/*$(NAME)* >> $(HASH)/MD5SUMS
+	@sha1sum $(BIN)/*$(NAME)* >> $(HASH)/SHA1SUMS
+	$(call READELF_LOOP, $(BINLIST))
 
 clean:
 	$(call PY,Full clean of $(CURDIR))
-	@$(GOCC) clean && rm -f $(TGTS) $(PCKTGTS)
+	@$(GOCC) clean && rm -rf $(BIN)/*
 	$(call PG,$@ Done)
+
+success:
+	$(call PG, BUILD COMPLETE) 
+	@tree $(BIN)
 
 ############ Functions ############
 # Print Yellow
@@ -59,5 +71,12 @@ endef
 # Print Green
 define PG
 	@echo "\033[38;5;084m[+] $(1) \033[0m"
+endef
+
+define READELF_LOOP
+	@for file in $(1) ; do \
+	  out=$$file-readelf; \
+	  readelf -a $(BIN)/$$file > $(INFO)/$$out 2> /dev/null; \
+	done
 endef
 ############ Functions ############
