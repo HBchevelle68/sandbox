@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io/ioutil" // filesystem errors
 	"os"
-	"path/filepath"
+	"path/filepath" // join
 	"syscall"
 )
 
@@ -30,6 +30,7 @@ func main() {
 	dirlist, err := ioutil.ReadDir(os.Args[1])
 	if err != nil {
 		fmt.Printf("ioutil.ReadDir(%s) failed\n", os.Args[1])
+		fmt.Println(err)
 		return
 	}
 
@@ -38,7 +39,7 @@ func main() {
 		fpath := filepath.Join(os.Args[1], file.Name())
 		fmt.Println(fpath)
 
-		if fstat, err := os.Stat(fpath); err != nil {
+		if fi, err := os.Stat(fpath); err != nil {
 
 			if errno, ok := err.(syscall.Errno); ok {
 
@@ -51,7 +52,9 @@ func main() {
 				continue
 			}
 		} else {
-			fmt.Printf("fstat: %v\n", fstat.Name())
+			fstat := fi.Sys().(*syscall.Stat_t)
+
+			fmt.Printf("Mode %d Mode: %s", fstat.Mode, fi.Mode())
 		}
 
 	}
