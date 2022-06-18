@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"io/ioutil" // filesystem errors
 	"os"
+	"os/user"
 	"path/filepath" // join
+	"strconv"
 	"syscall"
+	"time"
 )
 
 func check_path_or_print_usage() bool {
@@ -21,23 +24,55 @@ func check_path_or_print_usage() bool {
 	return false
 }
 
+func gidToGrpStuct(gid uint32) (*user.Group, error) {
+	grp, err := user.LookupGroupId(strconv.FormatUint(uint64(gid), 10))
+	if err != nil {
+		fmt.Println(err)
+	}
+	return grp, err
+}
+
+func uidToUserStuct(uid uint32) (*user.User, error) {
+	usr, err := user.LookupId(strconv.FormatUint(uint64(uid), 10))
+	if err != nil {
+		fmt.Println(err)
+	}
+	return usr, err
+}
+
+func lsTimeStr(time time.Time) string {
+	return fmt.Sprintf(
+		"%s %d %d:%d",
+		time.Month(),
+		time.Day(),
+		time.Hour(),
+		time.Minute(),
+	)
+}
+
 func main() {
 
 	if !check_path_or_print_usage() {
 		return
 	}
 
-	dirlist, err := ioutil.ReadDir(os.Args[1])
+	abspath, err := filepath.Abs(os.Args[1])
 	if err != nil {
-		fmt.Printf("ioutil.ReadDir(%s) failed\n", os.Args[1])
+		fmt.Printf("filepath.Abs(%s) failed\n", os.Args[1])
+		fmt.Println(err)
+		return
+	}
+
+	dirlist, err := ioutil.ReadDir(abspath)
+	if err != nil {
+		fmt.Printf("ioutil.ReadDir(%s) failed\n", abspath)
 		fmt.Println(err)
 		return
 	}
 
 	for _, file := range dirlist {
 
-		fpath := filepath.Join(os.Args[1], file.Name())
-		fmt.Println(fpath)
+		fpath := filepath.Join(abspath, file.Name())
 
 		if fi, err := os.Stat(fpath); err != nil {
 
@@ -48,13 +83,22 @@ func main() {
 				} else {
 					fmt.Printf("Stat on %s failed... errno val: %d Msg:%s\n", fpath, errno, err.Error())
 				}
-
 				continue
 			}
 		} else {
 			fstat := fi.Sys().(*syscall.Stat_t)
-
-			fmt.Printf("Mode %d Mode: %s", fstat.Mode, fi.Mode())
+			grp, _ := gidToGrpStuct(fstat.Gid)
+			usr, _ := uidToUserStuct(fstat.Uid)
+			fmt.Printf(
+				"%s %d %s %s %d %s %s\n",
+				fi.Mode(),
+				fstat.Nlink,
+				grp.Name,
+				usr.Name,
+				fstat.Size,
+				lsTimeStr(fi.ModTime()),
+				fpath,
+			)
 		}
 
 	}

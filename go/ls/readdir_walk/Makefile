@@ -24,6 +24,7 @@ GOBUILD=build
 GORUN=run 
 GOLFLAGS=-ldflags="-s -w"
 
+ARGS=""
 
 .PHONY: clean
 
@@ -39,6 +40,11 @@ build-stdgo: $(DIR)
 	$(call PT,packing $(NAME)-rel-stripped -> $(NAME)-stripped-upx)
 	@upx --best --lzma $(BIN)/$(NAME)-rel-stripped -o $(BIN)/$(NAME)-rel-stripped-upx
 	$(call PG,$(NAME)-stripped-upx Done)
+
+run: all
+	$(call PT,building and running -> $(BIN)/$(NAME)-debug)
+	@$(BIN)/$(NAME)-debug $(ARGS)
+	$(call PG,$@ Done)
 
 init-dirs:
 	@mkdir -p $(HASH)
