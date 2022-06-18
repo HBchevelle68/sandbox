@@ -48,6 +48,20 @@ func lsTimeStr(time time.Time) string {
 	return fmt.Sprintf("%s", time.Format("MMM DD YYYY HH:SS"))
 }
 
+func buildPermStr(file_mode uint32) {
+    permStr = ""
+    permStr += (file_mode & syscall.S_IRUSR ) ? 'r' : '-';
+    permStr = (file_mode & S_IWUSR) ? 'w' : '-';
+    permStr = (file_mode & S_IXUSR) ? 'x' : '-';
+    permStr = (file_mode & S_IRGRP) ? 'r' : '-';
+    permStr = (file_mode & S_IWGRP) ? 'w' : '-';
+    permStr = (file_mode & S_IXGRP) ? 'x' : '-';
+    permStr = (file_mode & S_IROTH) ? 'r' : '-';
+    permStr = (file_mode & S_IWOTH) ? 'w' : '-';
+    permStr = (file_mode & S_IXOTH) ? 'x' : '-';
+    permStr = '\0';
+}
+
 func main() {
 
 	if !check_path_or_print_usage() {
@@ -87,6 +101,7 @@ func main() {
 			fstat := fi.Sys().(*syscall.Stat_t)
 			grp, _ := gidToGrpStuct(fstat.Gid)
 			usr, _ := uidToUserStuct(fstat.Uid)
+			mode := buildPermStr(fstat.Mode)
 			fmt.Printf(
 				"%s %3d %4s %4s %10d %15s %-s\n",
 				fi.Mode(),
