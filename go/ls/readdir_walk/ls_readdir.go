@@ -11,6 +11,10 @@ import (
 	"time"
 )
 
+const (
+	MMMDDYYYYhhmm = "Jan 01 2022"
+)
+
 func check_path_or_print_usage() bool {
 	if len(os.Args) >= 2 {
 		if _, err := os.Stat(os.Args[1]); os.IsNotExist(err) {
@@ -41,13 +45,7 @@ func uidToUserStuct(uid uint32) (*user.User, error) {
 }
 
 func lsTimeStr(time time.Time) string {
-	return fmt.Sprintf(
-		"%s %d %d:%d",
-		time.Month(),
-		time.Day(),
-		time.Hour(),
-		time.Minute(),
-	)
+	return fmt.Sprintf("%s", time.Format("MMM DD YYYY HH:SS"))
 }
 
 func main() {
@@ -90,13 +88,13 @@ func main() {
 			grp, _ := gidToGrpStuct(fstat.Gid)
 			usr, _ := uidToUserStuct(fstat.Uid)
 			fmt.Printf(
-				"%s %d %s %s %d %s %s\n",
+				"%s %3d %4s %4s %10d %15s %-s\n",
 				fi.Mode(),
 				fstat.Nlink,
 				grp.Name,
 				usr.Name,
 				fstat.Size,
-				lsTimeStr(fi.ModTime()),
+				fi.ModTime().Format("Jan 01"),
 				fpath,
 			)
 		}
