@@ -6,13 +6,11 @@ import (
 	"os"
 	"os/user"
 	"path/filepath" // join
+	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
-)
-
-const (
-	MMMDDYYYYhhmm = "Jan 01 2022"
 )
 
 func check_path_or_print_usage() bool {
@@ -23,8 +21,10 @@ func check_path_or_print_usage() bool {
 			return true
 		}
 	} else {
-		fmt.Printf("Usage: ./ls [path]\n")
+		fmt.Printf("Usage: ./ls path [depth] \n")
+
 	}
+
 	return false
 }
 
@@ -42,39 +42,6 @@ func uidToUserStuct(uid uint32) (*user.User, error) {
 		fmt.Println(err)
 	}
 	return usr, err
-}
-
-func lsTimeStr(time time.Time) string {
-	return fmt.Sprintf("%s", time.Format("MMM DD YYYY HH:SS"))
-}
-
-var g_permMap = map[int]string{
-	syscall.S_IRUSR: "r",
-	syscall.S_IWUSR: "w",
-	syscall.S_IXUSR: "x",
-	syscall.S_IRGRP: "r",
-	syscall.S_IWGRP: "w",
-	syscall.S_IXGRP: "x",
-	syscall.S_IROTH: "r",
-	syscall.S_IWOTH: "w",
-	syscall.S_IXOTH: "x",
-}
-
-/* Keys to efficiently iterate the g_permMap
- * Since these are known are build time
- * and order matter and will not change
- * Placing these here
- */
-var g_keys = [9]uint32{
-	uint32(syscall.S_IRUSR),
-	uint32(syscall.S_IWUSR),
-	uint32(syscall.S_IXUSR),
-	uint32(syscall.S_IRGRP),
-	uint32(syscall.S_IWGRP),
-	uint32(syscall.S_IXGRP),
-	uint32(syscall.S_IROTH),
-	uint32(syscall.S_IWOTH),
-	uint32(syscall.S_IXOTH),
 }
 
 func buildTypePermStr(file_mode uint32) string {
@@ -130,31 +97,35 @@ func buildTypePermStr(file_mode uint32) string {
 	return tps
 }
 
-func main() {
+// Correct Go's sorting
+func SortFileNameAscend(files []os.FileInfo) {
+	sort.Slice(files, func(i, j int) bool {
+		return strings.ToLower(files[i].Name()) < strings.ToLower(files[j].Name())
+	})
+}
 
-	if !check_path_or_print_usage() {
-		return
-	}
+func SortFileNameDescend(files []os.FileInfo) {
+	sort.Slice(files, func(i, j int) bool {
+		return strings.ToLower(files[i].Name()) > strings.ToLower(files[j].Name())
+	})
+}
 
-	abspath, err := filepath.Abs(os.Args[1])
+func recursive_walk_and_list(path string, currd uint, mdepth uint) {
+
+	dirlist, err := ioutil.ReadDir(path)
 	if err != nil {
-		fmt.Printf("filepath.Abs(%s) failed\n", os.Args[1])
+		fmt.Printf("ioutil.ReadDir(%s) failed\n", path)
 		fmt.Println(err)
 		return
 	}
 
-	dirlist, err := ioutil.ReadDir(abspath)
-	if err != nil {
-		fmt.Printf("ioutil.ReadDir(%s) failed\n", abspath)
-		fmt.Println(err)
-		return
-	}
+	SortFileNameAscend(dirlist)
 
 	for _, file := range dirlist {
 
 		var fstat = syscall.Stat_t{}
 
-		fpath := filepath.Join(abspath, file.Name())
+		fpath := filepath.Join(path, file.Name())
 
 		if err := syscall.Stat(fpath, &fstat); err != nil {
 
@@ -172,7 +143,6 @@ func main() {
 			usr, _ := uidToUserStuct(fstat.Uid)
 			mode := buildTypePermStr(uint32(fstat.Mode))
 
-			//fstat.Mtim.
 			fmt.Printf(
 				"%s %3d %4s %4s %10d %15s %-s\n",
 				mode,
@@ -180,11 +150,35 @@ func main() {
 				grp.Name,
 				usr.Name,
 				fstat.Size,
-				"0",
+				time.Unix(fstat.Mtim.Unix()).Format(time.RFC3339),
 				fpath,
 			)
 		}
+		if (fstat.Mode&syscall.S_IFDIR) != 0 && currd != mdepth {
+			currd++
+			recursive_walk_and_list(fpath, currd, mdepth)
+		}
+	}
+}
 
+func main() {
+	if !check_path_or_print_usage() {
+		return
 	}
 
+	abspath, err := filepath.Abs(os.Args[1])
+	if err != nil {
+		fmt.Printf("filepath.Abs(%s) failed\n", os.Args[1])
+		fmt.Println(err)
+		return
+	}
+
+	var depth = 1
+	if len(os.Args) >= 3 {
+		depth, err = strconv.Atoi(os.Args[2])
+		if err != nil {
+			fmt.Printf("failed to convert %s to int", os.Args[2])
+		}
+	}
+	recursive_walk_and_list(abspath, 0, uint(depth))
 }
