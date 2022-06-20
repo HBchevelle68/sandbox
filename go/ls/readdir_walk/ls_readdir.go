@@ -1,17 +1,34 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil" // filesystem errors
+	"fmt" // filesystem errors
 	"os"
 	"os/user"
 	"path/filepath" // join
 	"sort"
 	"strconv"
-	"strings"
+	"strings" // assist sort funcs
 	"syscall"
 	"time"
 )
+
+// Options
+const (
+	LS_PHYS    uint32 = 1 << 1
+	LS_MOUNT          = 1 << 0
+	LS_NODIR          = 1 << 2
+	LS_ONLYDIR        = 1 << 3
+)
+
+type Xstat func(string, *syscall.Stat_t) error
+
+// Syscall mapping to different stat calls
+// Used to quickly resolve LS_PHYS without
+// using a conditional
+var smap = map[uint32]Xstat{
+	0: syscall.Stat,
+	1: syscall.Lstat,
+}
 
 func check_path_or_print_usage() bool {
 	if len(os.Args) >= 2 {
@@ -110,9 +127,23 @@ func SortFileNameDescend(files []os.FileInfo) {
 	})
 }
 
-func recursive_walk_and_list(path string, currd uint, mdepth uint) {
+func lsReadDir(root string) ([]os.FileInfo, error) {
+	f, err := os.Open(root)
+	if err != nil {
+		return nil, err
+	}
+	fInfoList, err := f.Readdir(-1)
+	f.Close()
+	if err != nil {
+		return nil, err
+	}
 
-	dirlist, err := ioutil.ReadDir(path)
+	return fInfoList, nil
+}
+
+func recursive_walk_and_list(path string, currd uint, mdepth uint, opts uint32) {
+
+	dirlist, err := lsReadDir(path)
 	if err != nil {
 		fmt.Printf("ioutil.ReadDir(%s) failed\n", path)
 		fmt.Println(err)
@@ -127,7 +158,11 @@ func recursive_walk_and_list(path string, currd uint, mdepth uint) {
 
 		fpath := filepath.Join(path, file.Name())
 
-		if err := syscall.Stat(fpath, &fstat); err != nil {
+		// smap is a map containing stat (key == 0) and
+		// lstat (key == 1). This provides a fast way
+		// to resolve the option to follow or not follow
+		// symlinks (LS_PHYS)
+		if err := smap[opts&LS_PHYS](fpath, &fstat); err != nil {
 
 			if errno, ok := err.(syscall.Errno); ok {
 
@@ -155,8 +190,7 @@ func recursive_walk_and_list(path string, currd uint, mdepth uint) {
 			)
 		}
 		if (fstat.Mode&syscall.S_IFDIR) != 0 && currd != mdepth {
-			currd++
-			recursive_walk_and_list(fpath, currd, mdepth)
+			recursive_walk_and_list(fpath, currd+1, mdepth, opts)
 		}
 	}
 }
@@ -180,5 +214,5 @@ func main() {
 			fmt.Printf("failed to convert %s to int", os.Args[2])
 		}
 	}
-	recursive_walk_and_list(abspath, 0, uint(depth))
+	recursive_walk_and_list(abspath, 1, uint(depth), 1)
 }
