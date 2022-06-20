@@ -14,8 +14,8 @@ import (
 
 // Options
 const (
-	LS_PHYS    uint32 = 1 << 1
-	LS_MOUNT          = 1 << 0
+	LS_PHYS    uint32 = 1 << 0
+	LS_MOUNT          = 1 << 1
 	LS_NODIR          = 1 << 2
 	LS_ONLYDIR        = 1 << 3
 )
@@ -61,9 +61,10 @@ func uidToUserStuct(uid uint32) (*user.User, error) {
 	return usr, err
 }
 
-func buildTypePermStr(file_mode uint32) string {
+func buildTypePermStr(file_mode uint32) (string, bool) {
 	// Type and permissions string (tps)
 	tps := ""
+	lnk := false
 	var mask uint32 = 0x0100
 
 	switch file_mode & syscall.S_IFMT {
@@ -79,11 +80,12 @@ func buildTypePermStr(file_mode uint32) string {
 		tps += "-"
 	case syscall.S_IFLNK:
 		tps += "l"
+		lnk = true
 	case syscall.S_IFSOCK:
 		tps += "s"
 	default:
 		fmt.Printf("ERROR INVALID MASK FOUND: %d\n", file_mode&syscall.S_IFMT)
-		return tps
+		return tps, lnk
 	}
 
 	for i := 0; i < 9; i++ {
@@ -111,7 +113,7 @@ func buildTypePermStr(file_mode uint32) string {
 		}
 	}
 
-	return tps
+	return tps, lnk
 }
 
 // Correct Go's sorting
@@ -174,9 +176,14 @@ func recursive_walk_and_list(path string, currd uint, mdepth uint, opts uint32) 
 				continue
 			}
 		} else {
+			lnkDst := ""
 			grp, _ := gidToGrpStuct(fstat.Gid)
 			usr, _ := uidToUserStuct(fstat.Uid)
-			mode := buildTypePermStr(uint32(fstat.Mode))
+			mode, lnk := buildTypePermStr(uint32(fstat.Mode))
+			if lnk {
+				tmp, _ := os.Readlink(fpath)
+				lnkDst += " -> " + tmp
+			}
 
 			fmt.Printf(
 				"%s %3d %4s %4s %10d %15s %-s\n",
@@ -186,7 +193,7 @@ func recursive_walk_and_list(path string, currd uint, mdepth uint, opts uint32) 
 				usr.Name,
 				fstat.Size,
 				time.Unix(fstat.Mtim.Unix()).Format(time.RFC3339),
-				fpath,
+				fpath+lnkDst,
 			)
 		}
 		if (fstat.Mode&syscall.S_IFDIR) != 0 && currd != mdepth {
