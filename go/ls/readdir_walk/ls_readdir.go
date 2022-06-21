@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt" // filesystem errors
 	"os"
 	"os/user"
@@ -30,21 +31,7 @@ var smap = map[uint32]Xstat{
 	1: syscall.Lstat,
 }
 
-func check_path_or_print_usage() bool {
-	if len(os.Args) >= 2 {
-		if _, err := os.Stat(os.Args[1]); os.IsNotExist(err) {
-			fmt.Printf("Path %s doesn't exist\n", os.Args[1])
-		} else {
-			return true
-		}
-	} else {
-		fmt.Printf("Usage: ./ls path [depth] \n")
-
-	}
-
-	return false
-}
-
+// Covert uid to user.Group
 func gidToGrpStuct(gid uint32) (*user.Group, error) {
 	grp, err := user.LookupGroupId(strconv.FormatUint(uint64(gid), 10))
 	if err != nil {
@@ -53,6 +40,7 @@ func gidToGrpStuct(gid uint32) (*user.Group, error) {
 	return grp, err
 }
 
+// Covert uid to user.User
 func uidToUserStuct(uid uint32) (*user.User, error) {
 	usr, err := user.LookupId(strconv.FormatUint(uint64(uid), 10))
 	if err != nil {
@@ -61,6 +49,11 @@ func uidToUserStuct(uid uint32) (*user.User, error) {
 	return usr, err
 }
 
+// go offers a way to acces this already produced string
+// however, i found multiple cases where it would evaluate
+// The type to have multiple types. I ran into this simply
+// by running on /. This while manual produces identical
+// linux output
 func buildTypePermStr(file_mode uint32) (string, bool) {
 	// Type and permissions string (tps)
 	tps := ""
@@ -129,6 +122,12 @@ func SortFileNameDescend(files []os.FileInfo) {
 	})
 }
 
+// There are func's in go that can produce similar output
+// However, all i tried seemed to run stat() instead of
+// lstat(). This is problematic when you don't want to
+// eval the link destination but what the link itself
+//
+// This function gets around this by using os.File.Readdir()
 func lsReadDir(root string) ([]os.FileInfo, error) {
 	f, err := os.Open(root)
 	if err != nil {
@@ -143,83 +142,147 @@ func lsReadDir(root string) ([]os.FileInfo, error) {
 	return fInfoList, nil
 }
 
-func recursive_walk_and_list(path string, currd uint, mdepth uint, opts uint32) {
+func processFile(fpath string, opts uint32, fstat *syscall.Stat_t) {
+	// smap is a map containing stat (key == 0) and
+	// lstat (key == 1). This provides a fast way
+	// to resolve the option to follow or not follow
+	// symlinks (LS_PHYS)
+	if err := smap[opts&LS_PHYS](fpath, fstat); err != nil {
+
+		if errno, ok := err.(syscall.Errno); ok {
+
+			if errno == syscall.EACCES {
+				fmt.Printf("Stat on %s failed... Permission Denied\n", fpath)
+			} else {
+				fmt.Printf("Stat on %s failed... errno val: %d Msg:%s\n", fpath, errno, err.Error())
+			}
+			return
+		}
+	} else {
+		// If anything errors here
+		// We just push on and display what we can
+		lnkDst := ""
+		grp, _ := gidToGrpStuct(fstat.Gid)
+		usr, _ := uidToUserStuct(fstat.Uid)
+		mode, lnk := buildTypePermStr(uint32(fstat.Mode))
+		if lnk {
+			tmp, _ := os.Readlink(fpath)
+			lnkDst += " -> " + tmp
+		}
+
+		fmt.Printf(
+			"%s %3d %8s %8s %10d %15s %-s\n",
+			mode,
+			fstat.Nlink,
+			grp.Name,
+			usr.Name,
+			fstat.Size,
+			time.Unix(fstat.Mtim.Unix()).Format(time.RFC3339),
+			fpath+lnkDst,
+		)
+	}
+}
+
+func recursive_walk_and_list(path string, rootDev uint64, currd uint, mdepth uint, opts uint32) {
 
 	dirlist, err := lsReadDir(path)
 	if err != nil {
-		fmt.Printf("ioutil.ReadDir(%s) failed\n", path)
 		fmt.Println(err)
 		return
 	}
-
+	// The sorting in go isn't as expected
+	// i.e. doesn't match the sorting performed
+	// by Linux utils, this will fix that
 	SortFileNameAscend(dirlist)
 
 	for _, file := range dirlist {
 
 		var fstat = syscall.Stat_t{}
-
 		fpath := filepath.Join(path, file.Name())
 
-		// smap is a map containing stat (key == 0) and
-		// lstat (key == 1). This provides a fast way
-		// to resolve the option to follow or not follow
-		// symlinks (LS_PHYS)
-		if err := smap[opts&LS_PHYS](fpath, &fstat); err != nil {
+		if ((opts&LS_NODIR) != 0 && file.IsDir()) || ((opts&LS_ONLYDIR) != 0 && !file.IsDir()) {
+			// One of the options we were told to skip has hit
+			// Skip full processing, just stat the file
+			// We need to Xstat() in order to obtain
+			// the device ID the file is on
+			if err := smap[opts&LS_PHYS](fpath, &fstat); err != nil {
 
-			if errno, ok := err.(syscall.Errno); ok {
+				if errno, ok := err.(syscall.Errno); ok {
 
-				if errno == syscall.EACCES {
-					fmt.Printf("Stat on %s failed... Permission Denied\n", fpath)
-				} else {
-					fmt.Printf("Stat on %s failed... errno val: %d Msg:%s\n", fpath, errno, err.Error())
+					if errno == syscall.EACCES {
+						fmt.Printf("Stat on %s failed... Permission Denied\n", fpath)
+					} else {
+						fmt.Printf("Stat on %s failed... errno val: %d Msg:%s\n", fpath, errno, err.Error())
+					}
+					return
 				}
-				continue
 			}
 		} else {
-			lnkDst := ""
-			grp, _ := gidToGrpStuct(fstat.Gid)
-			usr, _ := uidToUserStuct(fstat.Uid)
-			mode, lnk := buildTypePermStr(uint32(fstat.Mode))
-			if lnk {
-				tmp, _ := os.Readlink(fpath)
-				lnkDst += " -> " + tmp
-			}
-
-			fmt.Printf(
-				"%s %3d %4s %4s %10d %15s %-s\n",
-				mode,
-				fstat.Nlink,
-				grp.Name,
-				usr.Name,
-				fstat.Size,
-				time.Unix(fstat.Mtim.Unix()).Format(time.RFC3339),
-				fpath+lnkDst,
-			)
+			// Process AND print the file
+			processFile(fpath, opts, &fstat)
 		}
-		if (fstat.Mode&syscall.S_IFDIR) != 0 && currd != mdepth {
-			recursive_walk_and_list(fpath, currd+1, mdepth, opts)
+
+		// Recurse
+		// I dislike how long this conditional is
+		// but stacking in go causes weird indentation
+		// the conditional itself...
+		if (fstat.Mode&syscall.S_IFDIR) != 0 && currd != mdepth && (fstat.Dev == rootDev && (opts&LS_MOUNT) != 0) {
+			recursive_walk_and_list(fpath, rootDev, currd+1, mdepth, opts)
 		}
 	}
 }
 
 func main() {
-	if !check_path_or_print_usage() {
+
+	// Set flags
+	userPath := flag.String("p", ".", "Path")
+	depth := flag.Int("d", 1, "Max levels deep to interate. 1 is current directory. -1 is unlimited.")
+	sym := flag.Bool("follow-sym", false, "Follow symlinks")
+	xDev := flag.Bool("x", true, "If set, stay within the same filesystem (i.e., do not cross mount points).")
+	noDir := flag.Bool("no-dir", false, "Filter out directories. Directories will STILL be traversed.")
+	onlyDir := flag.Bool("only-dir", false, "Filter out everything that is NOT a directory")
+	flag.Parse()
+
+	if *noDir && *onlyDir {
+		fmt.Println("Cannot select no directories and only directories")
+		flag.Usage()
 		return
 	}
 
-	abspath, err := filepath.Abs(os.Args[1])
+	abspath, err := filepath.Abs(*userPath)
 	if err != nil {
-		fmt.Printf("filepath.Abs(%s) failed\n", os.Args[1])
+		fmt.Printf("filepath.Abs(%s) failed\n", *userPath)
 		fmt.Println(err)
 		return
 	}
 
-	var depth = 1
-	if len(os.Args) >= 3 {
-		depth, err = strconv.Atoi(os.Args[2])
-		if err != nil {
-			fmt.Printf("failed to convert %s to int", os.Args[2])
+	var fstat = syscall.Stat_t{}
+	if err := syscall.Lstat(abspath, &fstat); err != nil {
+
+		if errno, ok := err.(syscall.Errno); ok {
+
+			if errno == syscall.EACCES {
+				fmt.Printf("Stat on %s failed... Permission Denied\n", abspath)
+			} else {
+				fmt.Printf("Stat on %s failed... errno val: %d Msg:%s\n", abspath, errno, err.Error())
+			}
+			return
 		}
 	}
-	recursive_walk_and_list(abspath, 1, uint(depth), 1)
+
+	var optmask uint32 = 0
+	if !(*sym) {
+		optmask |= LS_PHYS
+	}
+	if *xDev {
+		optmask |= LS_MOUNT
+	}
+	if *noDir {
+		optmask |= LS_NODIR
+	}
+	if *onlyDir {
+		optmask |= LS_ONLYDIR
+	}
+
+	recursive_walk_and_list(abspath, fstat.Dev, 1, uint(*depth), optmask)
 }
