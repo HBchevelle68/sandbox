@@ -26,7 +26,7 @@ type Xstat func(string, *syscall.Stat_t) error
 // Syscall mapping to different stat calls
 // Used to quickly resolve LS_PHYS without
 // using a conditional
-var smap = map[uint32]Xstat{
+var XStat = map[uint32]Xstat{
 	0: syscall.Stat,
 	1: syscall.Lstat,
 }
@@ -143,11 +143,11 @@ func lsReadDir(root string) ([]os.FileInfo, error) {
 }
 
 func processFile(fpath string, opts uint32, fstat *syscall.Stat_t) {
-	// smap is a map containing stat (key == 0) and
+	// XStat is a map containing stat (key == 0) and
 	// lstat (key == 1). This provides a fast way
 	// to resolve the option to follow or not follow
 	// symlinks (LS_PHYS)
-	if err := smap[opts&LS_PHYS](fpath, fstat); err != nil {
+	if err := XStat[opts&LS_PHYS](fpath, fstat); err != nil {
 
 		if errno, ok := err.(syscall.Errno); ok {
 
@@ -205,7 +205,7 @@ func recursive_walk_and_list(path string, rootDev uint64, currd uint, mdepth uin
 			// Skip full processing, just stat the file
 			// We need to Xstat() in order to obtain
 			// the device ID the file is on
-			if err := smap[opts&LS_PHYS](fpath, &fstat); err != nil {
+			if err := XStat[opts&LS_PHYS](fpath, &fstat); err != nil {
 
 				if errno, ok := err.(syscall.Errno); ok {
 
@@ -225,7 +225,7 @@ func recursive_walk_and_list(path string, rootDev uint64, currd uint, mdepth uin
 		// Recurse
 		// I dislike how long this conditional is
 		// but stacking in go causes weird indentation
-		// the conditional itself...
+		// due to the auto formater...
 		if (fstat.Mode&syscall.S_IFDIR) != 0 && currd != mdepth && (fstat.Dev == rootDev && (opts&LS_MOUNT) != 0) {
 			recursive_walk_and_list(fpath, rootDev, currd+1, mdepth, opts)
 		}

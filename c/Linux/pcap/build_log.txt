@@ -1,0 +1,316 @@
+ap@ubuntu-22:~/MyRepos/pocs/c/Linux/pcap/libpcap-1.10.1(master)>./configure --prefix=/home/ap/MyRepos/pocs/c/Linux/pcap/lib
+checking build system type... x86_64-pc-linux-gnu
+checking host system type... x86_64-pc-linux-gnu
+checking target system type... x86_64-pc-linux-gnu
+checking for gcc... gcc
+checking whether the C compiler works... yes
+checking for C compiler default output file name... a.out
+checking for suffix of executables... 
+checking whether we are cross compiling... no
+checking for suffix of object files... o
+checking whether we are using the GNU C compiler... yes
+checking whether gcc accepts -g... yes
+checking for gcc option to accept ISO C89... none needed
+checking for gcc option to accept ISO C99... none needed
+checking whether the compiler supports the -fvisibility=hidden option... yes
+checking for inline... inline
+checking for __atomic_load_n... yes
+checking for __atomic_store_n... yes
+checking for special C compiler options needed for large files... no
+checking for _FILE_OFFSET_BITS value needed for large files... no
+checking for _LARGEFILE_SOURCE value needed for large files... no
+checking how to run the C preprocessor... gcc -E
+checking for grep that handles long lines and -e... /usr/bin/grep
+checking for egrep... /usr/bin/grep -E
+checking for ANSI C header files... yes
+checking for sys/types.h... yes
+checking for sys/stat.h... yes
+checking for stdlib.h... yes
+checking for string.h... yes
+checking for memory.h... yes
+checking for strings.h... yes
+checking for inttypes.h... yes
+checking for stdint.h... yes
+checking for unistd.h... yes
+checking sys/ioccom.h usability... no
+checking sys/ioccom.h presence... no
+checking for sys/ioccom.h... no
+checking sys/sockio.h usability... no
+checking sys/sockio.h presence... no
+checking for sys/sockio.h... no
+checking netpacket/packet.h usability... yes
+checking netpacket/packet.h presence... yes
+checking for netpacket/packet.h... yes
+checking for net/pfvar.h... no
+checking for ANSI ioctl definitions... yes
+checking for strerror... yes
+checking for strerror_r... yes
+checking whether strerror_r is GNU-style... yes
+checking for vsyslog... yes
+checking for vsnprintf... yes
+checking for snprintf... yes
+checking for vasprintf... yes
+checking for asprintf... yes
+checking for strlcat... no
+checking for strlcpy... no
+checking for strtok_r... yes
+checking for ffs... yes
+checking whether ffs is declared... yes
+checking for getaddrinfo... yes
+checking for library containing putmsg... no
+checking whether getnetbyname_r is declared... yes
+checking for the Linux getnetbyname_r()... yes
+checking whether getprotobyname_r is declared... yes
+checking for the Linux getprotobyname_r()... yes
+checking for ether_hostton... yes
+checking whether ether_hostton is declared... no
+checking whether ether_hostton is declared... yes
+checking pthread.h usability... yes
+checking pthread.h presence... yes
+checking for pthread.h... yes
+checking for pthread_create... yes
+checking if --disable-protochain option is specified... enabled
+checking net/bpf.h usability... no
+checking net/bpf.h presence... no
+checking for net/bpf.h... no
+checking net/pfilt.h usability... no
+checking net/pfilt.h presence... no
+checking for net/pfilt.h... no
+checking net/enet.h usability... no
+checking net/enet.h presence... no
+checking for net/enet.h... no
+checking net/nit.h usability... no
+checking net/nit.h presence... no
+checking for net/nit.h... no
+checking sys/net/nit.h usability... no
+checking sys/net/nit.h presence... no
+checking for sys/net/nit.h... no
+checking linux/socket.h usability... yes
+checking linux/socket.h presence... yes
+checking for linux/socket.h... yes
+checking net/raw.h usability... no
+checking net/raw.h presence... no
+checking for net/raw.h... no
+checking sys/dlpi.h usability... no
+checking sys/dlpi.h presence... no
+checking for sys/dlpi.h... no
+checking config/HaikuConfig.h usability... no
+checking config/HaikuConfig.h presence... no
+checking for config/HaikuConfig.h... no
+checking packet capture type... linux
+checking for pkg-config... pkg-config
+checking for linux/wireless.h... yes
+checking for libnl-genl-3.0 with pkg-config... not found
+checking for nl_socket_alloc in -lnl-3... no
+checking for struct tpacket_auxdata.tp_vlan_tci... yes
+checking for getifaddrs... yes
+checking ifaddrs.h usability... yes
+checking ifaddrs.h presence... yes
+checking for ifaddrs.h... yes
+checking linux/net_tstamp.h usability... yes
+checking linux/net_tstamp.h presence... yes
+checking for linux/net_tstamp.h... yes
+checking for socklen_t... yes
+checking dagapi.h usability... no
+checking dagapi.h presence... no
+checking for dagapi.h... no
+checking whether we have Septel API headers... no
+checking whether we have Myricom Sniffer API... no
+checking whether TurboCap is supported... no
+checking whether to enable remote packet capture... no
+checking whether to build optimizer debugging code... no
+checking whether to build parser debugging code... no
+checking for flex... flex
+checking lex output file root... lex.yy
+checking lex library... -lfl
+checking whether yytext is a pointer... yes
+checking for capable lex... yes
+checking for bison... bison
+checking for ranlib... ranlib
+checking for ar... ar
+checking whether ln -s works... yes
+checking for struct sockaddr.sa_len... no
+checking for struct sockaddr_storage... yes
+checking for dl_hp_ppa_info_t.dl_module_id_1... no
+checking for Linux usbmon USB sniffing support... yes
+configure: Device for USB sniffing is /dev/usbmon
+checking linux/compiler.h usability... no
+checking linux/compiler.h presence... no
+checking for linux/compiler.h... no
+checking linux/usbdevice_fs.h usability... yes
+checking linux/usbdevice_fs.h presence... yes
+checking for linux/usbdevice_fs.h... yes
+checking for struct usbdevfs_ctrltransfer.bRequestType... yes
+checking whether we can compile the netfilter support... yes
+checking whether we can compile the netmap support... no
+checking for DPDK with pkg-config... not found
+checking whether we can compile the DPDK support... no
+checking bluetooth/bluetooth.h usability... no
+checking bluetooth/bluetooth.h presence... no
+checking for bluetooth/bluetooth.h... no
+configure: Bluetooth sniffing is not supported; install bluez-lib devel to enable it
+checking for D-Bus... no
+checking for ibv_get_device_list in -libverbs... no
+checking for a BSD-compatible install... /usr/bin/install -c
+configure: creating ./config.status
+config.status: creating Makefile
+config.status: creating grammar.y
+config.status: creating pcap-filter.manmisc
+config.status: creating pcap-linktype.manmisc
+config.status: creating pcap-tstamp.manmisc
+config.status: creating pcap-savefile.manfile
+config.status: creating pcap.3pcap
+config.status: creating pcap_compile.3pcap
+config.status: creating pcap_datalink.3pcap
+config.status: creating pcap_dump_open.3pcap
+config.status: creating pcap_get_tstamp_precision.3pcap
+config.status: creating pcap_list_datalinks.3pcap
+config.status: creating pcap_list_tstamp_types.3pcap
+config.status: creating pcap_open_dead.3pcap
+config.status: creating pcap_open_offline.3pcap
+config.status: creating pcap_set_immediate_mode.3pcap
+config.status: creating pcap_set_tstamp_precision.3pcap
+config.status: creating pcap_set_tstamp_type.3pcap
+config.status: creating rpcapd/Makefile
+config.status: creating rpcapd/rpcapd.manadmin
+config.status: creating rpcapd/rpcapd-config.manfile
+config.status: creating testprogs/Makefile
+config.status: creating config.h
+config.status: executing default-1 commands
+ap@ubuntu-22:~/MyRepos/pocs/c/Linux/pcap/libpcap-1.10.1(master)>make
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./pcap-linux.c
+./pcap-linux.c: In function ‘pcap_breakloop_linux’:
+./pcap-linux.c:947:15: warning: ignoring return value of ‘write’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+  947 |         (void)write(handlep->poll_breakloop_fd, &value, sizeof(value));
+      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./fad-getad.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./pcap-usb-linux.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./pcap-netfilter-linux.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./pcap.c
+bison -p pcap_ -o grammar.c -d grammar.y
+flex -P pcap_ --header-file=scanner.h --nounput -o scanner.c scanner.l
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./gencode.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./optimize.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./nametoaddr.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./etherent.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./fmtutils.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./savefile.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./sf-pcap.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./sf-pcapng.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./pcap-common.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./bpf_image.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./bpf_filter.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c ./bpf_dump.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c scanner.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -c grammar.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -o strlcat.o -c ./missing/strlcat.c
+gcc -fvisibility=hidden  -fpic -I.  -DBUILDING_PCAP -Dpcap_EXPORTS -DHAVE_CONFIG_H  -g -O2    -o strlcpy.o -c ./missing/strlcpy.c
+ar rc libpcap.a pcap-linux.o fad-getad.o  pcap-usb-linux.o pcap-netfilter-linux.o  pcap.o gencode.o optimize.o nametoaddr.o etherent.o fmtutils.o savefile.o sf-pcap.o sf-pcapng.o pcap-common.o bpf_image.o bpf_filter.o bpf_dump.o scanner.o grammar.o strlcat.o strlcpy.o 
+ranlib libpcap.a
+VER=`cat ./VERSION`; \
+MAJOR_VER=`sed 's/\([0-9][0-9]*\)\..*/\1/' ./VERSION`; \
+gcc  -shared -Wl,-soname,libpcap.so.$MAJOR_VER \
+    -o libpcap.so.$VER pcap-linux.o fad-getad.o  pcap-usb-linux.o pcap-netfilter-linux.o  pcap.o gencode.o optimize.o nametoaddr.o etherent.o fmtutils.o savefile.o sf-pcap.o sf-pcapng.o pcap-common.o bpf_image.o bpf_filter.o bpf_dump.o scanner.o grammar.o strlcat.o strlcpy.o  
+./config.status --file=libpcap.pc.tmp:./libpcap.pc.in
+config.status: creating libpcap.pc.tmp
+mv libpcap.pc.tmp libpcap.pc
+./config.status --file=pcap-config.tmp:./pcap-config.in
+config.status: creating pcap-config.tmp
+mv pcap-config.tmp pcap-config
+chmod a+x pcap-config
+ap@ubuntu-22:~/MyRepos/pocs/c/Linux/pcap/libpcap-1.10.1(master)>make install
+VER=`cat ./VERSION`; \
+MAJOR_VER=`sed 's/\([0-9][0-9]*\)\..*/\1/' ./VERSION`; \
+gcc  -shared -Wl,-soname,libpcap.so.$MAJOR_VER \
+    -o libpcap.so.$VER pcap-linux.o fad-getad.o  pcap-usb-linux.o pcap-netfilter-linux.o  pcap.o gencode.o optimize.o nametoaddr.o etherent.o fmtutils.o savefile.o sf-pcap.o sf-pcapng.o pcap-common.o bpf_image.o bpf_filter.o bpf_dump.o scanner.o grammar.o strlcat.o strlcpy.o  
+[ -d /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib ] || \
+    (mkdir -p /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib; chmod 755 /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib)
+VER=`cat ./VERSION`; \
+MAJOR_VER=`sed 's/\([0-9][0-9]*\)\..*/\1/' ./VERSION`; \
+/usr/bin/install -c libpcap.so.$VER /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib/libpcap.so.$VER; \
+ln -sf libpcap.so.$VER /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib/libpcap.so.$MAJOR_VER; \
+ln -sf libpcap.so.$MAJOR_VER /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib/libpcap.so
+#
+# Most platforms have separate suffixes for shared and
+# archive libraries, so we install both.
+#
+[ -d /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib ] || \
+    (mkdir -p /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib; chmod 755 /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib)
+/usr/bin/install -c -m 644 libpcap.a /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib/libpcap.a
+ranlib /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib/libpcap.a
+[ -d /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib ] || \
+    (mkdir -p /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib; chmod 755 /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib)
+[ -d /home/ap/MyRepos/pocs/c/Linux/pcap/lib/include ] || \
+    (mkdir -p /home/ap/MyRepos/pocs/c/Linux/pcap/lib/include; chmod 755 /home/ap/MyRepos/pocs/c/Linux/pcap/lib/include)
+[ -d /home/ap/MyRepos/pocs/c/Linux/pcap/lib/include/pcap ] || \
+    (mkdir -p /home/ap/MyRepos/pocs/c/Linux/pcap/lib/include/pcap; chmod 755 /home/ap/MyRepos/pocs/c/Linux/pcap/lib/include/pcap)
+[ -d /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man1 ] || \
+    (mkdir -p /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man1; chmod 755 /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man1)
+[ -d /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man3 ] || \
+    (mkdir -p /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man3; chmod 755 /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man3)
+[ -d /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man5 ] || \
+    (mkdir -p /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man5; chmod 755 /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man5)
+[ -d /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man7 ] || \
+    (mkdir -p /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man7; chmod 755 /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man7)
+for i in pcap.h pcap-bpf.h pcap-namedb.h pcap/bpf.h pcap/bluetooth.h pcap/can_socketcan.h pcap/compiler-tests.h pcap/dlt.h pcap/funcattrs.h pcap/pcap-inttypes.h pcap/ipnet.h pcap/namedb.h pcap/nflog.h pcap/pcap.h pcap/sll.h pcap/socket.h pcap/vlan.h pcap/usb.h; do \
+	/usr/bin/install -c -m 644 ./$i \
+	    /home/ap/MyRepos/pocs/c/Linux/pcap/lib/include/$i; done
+[ -d /home/ap/MyRepos/pocs/c/Linux/pcap/lib/bin ] || \
+    (mkdir -p /home/ap/MyRepos/pocs/c/Linux/pcap/lib/bin; chmod 755 /home/ap/MyRepos/pocs/c/Linux/pcap/lib/bin)
+/usr/bin/install -c pcap-config /home/ap/MyRepos/pocs/c/Linux/pcap/lib/bin/pcap-config
+[ -d /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib/pkgconfig ] || \
+    (mkdir -p /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib/pkgconfig; chmod 755 /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib/pkgconfig)
+/usr/bin/install -c -m 644 libpcap.pc /home/ap/MyRepos/pocs/c/Linux/pcap/lib/lib/pkgconfig/libpcap.pc
+for i in pcap-config.1; do \
+	/usr/bin/install -c -m 644 ./$i \
+	    /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man1/$i; done
+for i in pcap_activate.3pcap pcap_breakloop.3pcap pcap_can_set_rfmon.3pcap pcap_close.3pcap pcap_create.3pcap pcap_datalink_name_to_val.3pcap pcap_datalink_val_to_name.3pcap pcap_dump.3pcap pcap_dump_close.3pcap pcap_dump_file.3pcap pcap_dump_flush.3pcap pcap_dump_ftell.3pcap pcap_file.3pcap pcap_fileno.3pcap pcap_findalldevs.3pcap pcap_freecode.3pcap pcap_get_required_select_timeout.3pcap pcap_get_selectable_fd.3pcap pcap_geterr.3pcap pcap_init.3pcap pcap_inject.3pcap pcap_is_swapped.3pcap pcap_lib_version.3pcap pcap_lookupdev.3pcap pcap_lookupnet.3pcap pcap_loop.3pcap pcap_major_version.3pcap pcap_next_ex.3pcap pcap_offline_filter.3pcap pcap_open_live.3pcap pcap_set_buffer_size.3pcap pcap_set_datalink.3pcap pcap_set_promisc.3pcap pcap_set_protocol_linux.3pcap pcap_set_rfmon.3pcap pcap_set_snaplen.3pcap pcap_set_timeout.3pcap pcap_setdirection.3pcap pcap_setfilter.3pcap pcap_setnonblock.3pcap pcap_snapshot.3pcap pcap_stats.3pcap pcap_statustostr.3pcap pcap_strerror.3pcap pcap_tstamp_type_name_to_val.3pcap pcap_tstamp_type_val_to_name.3pcap; do \
+	/usr/bin/install -c -m 644 ./$i \
+	    /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man3/$i; done
+for i in pcap.3pcap pcap_compile.3pcap pcap_datalink.3pcap pcap_dump_open.3pcap pcap_get_tstamp_precision.3pcap pcap_list_datalinks.3pcap pcap_list_tstamp_types.3pcap pcap_open_dead.3pcap pcap_open_offline.3pcap pcap_set_immediate_mode.3pcap pcap_set_tstamp_precision.3pcap pcap_set_tstamp_type.3pcap; do \
+	/usr/bin/install -c -m 644 $i \
+	    /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man3/$i; done
+(cd /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man3 && \
+rm -f pcap_datalink_val_to_description.3pcap && \
+ln -s pcap_datalink_val_to_name.3pcap \
+	 pcap_datalink_val_to_description.3pcap && \
+rm -f pcap_datalink_val_to_description_or_dlt.3pcap && \
+ln -s pcap_datalink_val_to_name.3pcap \
+	 pcap_datalink_val_to_description_or_dlt.3pcap && \
+rm -f pcap_dump_fopen.3pcap && \
+ln -s pcap_dump_open.3pcap pcap_dump_fopen.3pcap && \
+rm -f pcap_freealldevs.3pcap && \
+ln -s pcap_findalldevs.3pcap pcap_freealldevs.3pcap && \
+rm -f pcap_perror.3pcap && \
+ln -s pcap_geterr.3pcap pcap_perror.3pcap && \
+rm -f pcap_sendpacket.3pcap && \
+ln -s pcap_inject.3pcap pcap_sendpacket.3pcap && \
+rm -f pcap_free_datalinks.3pcap && \
+ln -s pcap_list_datalinks.3pcap pcap_free_datalinks.3pcap && \
+rm -f pcap_free_tstamp_types.3pcap && \
+ln -s pcap_list_tstamp_types.3pcap pcap_free_tstamp_types.3pcap && \
+rm -f pcap_dispatch.3pcap && \
+ln -s pcap_loop.3pcap pcap_dispatch.3pcap && \
+rm -f pcap_minor_version.3pcap && \
+ln -s pcap_major_version.3pcap pcap_minor_version.3pcap && \
+rm -f pcap_next.3pcap && \
+ln -s pcap_next_ex.3pcap pcap_next.3pcap && \
+rm -f pcap_open_dead_with_tstamp_precision.3pcap && \
+ln -s pcap_open_dead.3pcap \
+	 pcap_open_dead_with_tstamp_precision.3pcap && \
+rm -f pcap_open_offline_with_tstamp_precision.3pcap && \
+ln -s pcap_open_offline.3pcap pcap_open_offline_with_tstamp_precision.3pcap && \
+rm -f pcap_fopen_offline.3pcap && \
+ln -s pcap_open_offline.3pcap pcap_fopen_offline.3pcap && \
+rm -f pcap_fopen_offline_with_tstamp_precision.3pcap && \
+ln -s pcap_open_offline.3pcap pcap_fopen_offline_with_tstamp_precision.3pcap && \
+rm -f pcap_tstamp_type_val_to_description.3pcap && \
+ln -s pcap_tstamp_type_val_to_name.3pcap pcap_tstamp_type_val_to_description.3pcap && \
+rm -f pcap_getnonblock.3pcap && \
+ln -s pcap_setnonblock.3pcap pcap_getnonblock.3pcap)
+for i in pcap-savefile.manfile.in; do \
+	/usr/bin/install -c -m 644 `echo $i | sed 's/.manfile.in/.manfile/'` \
+	    /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man5/`echo $i | sed 's/.manfile.in/.5/'`; done
+for i in pcap-filter.manmisc.in pcap-linktype.manmisc.in pcap-tstamp.manmisc.in; do \
+	/usr/bin/install -c -m 644 `echo $i | sed 's/.manmisc.in/.manmisc/'` \
+	    /home/ap/MyRepos/pocs/c/Linux/pcap/lib/share/man/man7/`echo $i | sed 's/.manmisc.in/.7/'`; done
