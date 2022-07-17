@@ -3,7 +3,15 @@
 #include <time.h>
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
+#include <net/if.h>
 #include <pcap.h>
+
+typedef struct mydev
+{
+    uint32_t ip_raw;
+    char ip_str[INET_ADDRSTRLEN];
+    char dev_name[IFNAMSIZ];
+} mydev_t;
 
 void get_dev_info(char *device)
 {
@@ -31,6 +39,7 @@ void get_dev_info(char *device)
 
     /* Get ip in human readable form */
     address.s_addr = ip_raw;
+    printf("x%08X\n", ip_raw);
     tmp = inet_ntoa(address);
     if (NULL == tmp)
     {
@@ -60,7 +69,7 @@ void print_packet_info(const u_char *packet, struct pcap_pkthdr packet_header)
     printf("Packet total length %d\n", packet_header.len);
 }
 
-void single_pcap(char *device)
+void open_then_single_pkt(char *device)
 {
     const u_char *packet = NULL;
     char error_buffer[PCAP_ERRBUF_SIZE] = {0};
@@ -99,7 +108,13 @@ void single_pcap(char *device)
 int main(int argc, char **argv)
 {
     char error_buffer[PCAP_ERRBUF_SIZE]; /* Size defined in pcap.h */
-    pcap_if_t *interfaces, *temp;
+    pcap_if_t *interfaces, *tmp;
+
+    if (-1 == pcap_init(PCAP_CHAR_ENC_LOCAL, error_buffer))
+    {
+        printf("%s\n", error_buffer);
+        return -1;
+    }
 
     /* Find a device */
     if (pcap_findalldevs(&interfaces, error_buffer) == -1)
@@ -109,11 +124,20 @@ int main(int argc, char **argv)
     }
 
     printf("Interfaces:\n");
-    for (temp = interfaces; temp; temp = temp->next)
+    for (tmp = interfaces; tmp; tmp = tmp->next)
     {
-        get_dev_info(temp->name);
+        printf("%s:", tmp->name);
+        for (pcap_addr_t *a = tmp->addresses; a != NULL; a = a->next)
+        {
+            if (a->addr->sa_family == AF_INET)
+            {
+                printf(" %s\n", inet_ntoa(((struct sockaddr_in *)a->addr)->sin_addr));
+            }
+        }
+        printf("\n");
     }
-    single_pcap(interfaces[0].name);
+
+    // open_then_single_pkt(interfaces[0].name);
 
     pcap_freealldevs(interfaces); // Clean up from find_alldevs
     return 0;
