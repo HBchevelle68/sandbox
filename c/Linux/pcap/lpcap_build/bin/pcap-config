@@ -8,7 +8,7 @@
 # libdir may be defined in terms of prefix and exec_prefix, so the
 # latter must be defined as well.
 #
-prefix="/home/ap/MyRepos/pocs/c/Linux/pcap/lib"
+prefix="/home/ap/MyRepos/pocs/c/Linux/pcap/lpcap_build"
 exec_prefix="${prefix}"
 includedir="${prefix}/include"
 libdir="${exec_prefix}/lib"

@@ -3,6 +3,8 @@
 #include <time.h>
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
+#include <net/ethernet.h>
 #include <net/if.h>
 #include <pcap.h>
 
@@ -12,6 +14,64 @@ typedef struct mydev
     char ip_str[INET_ADDRSTRLEN];
     char dev_name[IFNAMSIZ];
 } mydev_t;
+
+int ip_handler(const u_char *packet)
+{
+    struct iphdr *ip = NULL;
+
+    if (NULL == packet)
+    {
+        printf("Somehow got a null packet pointer!!\n");
+        return -1;
+    }
+
+    ip = (struct iphdr *)(packet + ETHER_HDR_LEN);
+
+    switch (ip->protocol)
+    {
+    case IPPROTO_TCP:
+        printf("TCP packet!\n");
+        break;
+
+    case IPPROTO_UDP:
+        printf("UDP packet!\n");
+        break;
+
+    default:
+        printf("Unhandled type!\n");
+        break;
+    }
+
+    return 0;
+}
+
+/* This function can be used as a callback for pcap_loop() */
+void link_handler(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
+{
+    struct ether_header *eth_header;
+    /* The packet is larger than the ether_header struct,
+       but we just want to look at the first part of the packet
+       that contains the header. We force the compiler
+       to treat the pointer to the packet as just a pointer
+       to the ether_header. The data payload of the packet comes
+       after the headers. Different packet types have different header
+       lengths though, but the ethernet header is always the same (14 bytes) */
+    eth_header = (struct ether_header *)packet;
+
+    if (ntohs(eth_header->ether_type) == ETHERTYPE_IP)
+    {
+        printf("IP \n");
+        ip_handler(packet);
+    }
+    else if (ntohs(eth_header->ether_type) == ETHERTYPE_ARP)
+    {
+        printf("ARP\n");
+    }
+    else if (ntohs(eth_header->ether_type) == ETHERTYPE_REVARP)
+    {
+        printf("Reverse ARP\n");
+    }
+}
 
 void get_dev_info(char *device)
 {
@@ -136,6 +196,21 @@ int main(int argc, char **argv)
         }
         printf("\n");
     }
+    int snapshot_len = 1028;
+    int promiscuous = 0;
+    int timeout = 1000;
+    pcap_t *handle = NULL;
+
+    handle = pcap_open_live(interfaces[0].name, snapshot_len, promiscuous, timeout, error_buffer);
+    if (NULL == handle)
+    {
+        printf("Error during pcap_open_live...\n");
+        printf("%s\n", error_buffer);
+        return -1;
+    }
+    pcap_loop(handle, -1, link_handler, NULL);
+    pcap_close(handle);
+    handle = NULL;
 
     // open_then_single_pkt(interfaces[0].name);
 
