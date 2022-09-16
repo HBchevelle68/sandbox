@@ -1,20 +1,13 @@
-fn main() {
-    let cmd = clap::Command::new("bh")
-        .bin_name("cargo")
-        .subcommand_required(true)
-        .subcommand(
-            clap::command!("example").arg(
-                clap::arg!(--"manifest-path" <PATH>)
-                    .required(false)
-                    .value_parser(clap::value_parser!(std::path::PathBuf)),
-            ),
-        );
+use clap::{Arg, Command};
 
-    let matches = cmd.get_matches();
-    let matches = match matches.subcommand() {
-        Some(("example", matches)) => matches,
-        _ => unreachable!("clap should ensure we don't get here"),
-    };
-    let manifest_path = matches.get_one::<std::path::PathBuf>("manifest-path");
-    println!("{:?}", manifest_path);
+fn main() {
+    let m = Command::new("")
+        .author("Me")
+        .version("0.0.1")
+        .about("A centralized helper")
+        .subcommand_required(true);
+
+    let matches = m.get_matches();
+
+    dbg!(&matches);
 }
