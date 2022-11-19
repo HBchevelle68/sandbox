@@ -13,7 +13,6 @@ pub enum Type {
     Dyn = 0x3,
     Core = 0x4,
 }
-
 impl_parse_for_enum!(Type, le_u16);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, TryFromPrimitive)]
@@ -22,7 +21,6 @@ pub enum Machine {
     X86 = 0x03,
     X86_64 = 0x3e,
 }
-
 impl_parse_for_enum!(Machine, le_u16);
 
 use derive_more::*;
@@ -80,7 +78,6 @@ pub enum SegmentType {
     Interp = 0x3,
     Note = 0x4,
 }
-
 impl_parse_for_enum!(SegmentType, le_u32);
 
 use enumflags2::*;
@@ -92,7 +89,6 @@ pub enum SegmentFlag {
     Write = 0x2,
     Read = 0x4,
 }
-
 impl_parse_for_enumflags!(SegmentFlag, le_u32);
 
 pub struct ProgramHeader {
@@ -187,6 +183,7 @@ pub struct File {
 impl File {
     const MAGIC: &'static [u8] = &[0x7f, 0x45, 0x4c, 0x46];
 
+    #[allow(unused_variables)]
     pub fn parse(i: parse::Input) -> parse::Result<Self> {
         use nom::{
             bytes::complete::{tag, take},
@@ -218,25 +215,25 @@ impl File {
         use nom::{combinator::map, number::complete::le_u16};
         // some values are stored as u16 to save storage, but they're actually
         // file offsets, or counts, so we want them as `usize` in rust.
-        let u16_usize = map(le_u16, |x| x as usize);
+        let mut u16_usize = map(le_u16, |x| x as usize);
 
         // ph = program header, sh = section header
         let (i, (ph_offset, sh_offset)) = tuple((Addr::parse, Addr::parse))(i)?;
         let (i, (flags, hdr_size)) = tuple((le_u32, le_u16))(i)?;
 
-        // let ph_entsize = tuple(u16_usize)(i);
-        // let ph_count = (u16_usize)(i);
-        // let sh_entsize = (u16_usize)(i);
-        // let sh_count = (u16_usize)(i);
-        // let sh_nidx = (u16_usize)(i);
+        let (i, ph_entsize) = &u16_usize(i)?;
+        let (i, ph_count) = &u16_usize(i)?;
+        let (i, sh_entsize) = &u16_usize(i)?;
+        let (i, sh_count) = &u16_usize(i)?;
+        let (i, sh_nidx) = &u16_usize(i)?;
 
-        let (i, (ph_entsize, ph_count)) = tuple(*(&u16_usize, &u16_usize))(i)?;
-        // let (i, (sh_entsize, sh_count, sh_nidx)) = tuple((&u16_usize, &u16_usize, &u16_usize))(i)?;
+        //let (i, (ph_entsize, ph_count)) = tuple((&u16_usize, &u16_usize))(i)?;
+        //let (i, (sh_entsize, sh_count, sh_nidx)) = tuple((&u16_usize, &u16_usize, &u16_usize))(i)?;
 
         // `chunks()` divides a slice into chunks of equal size - perfect, as we know the entry size.
-        let ph_slices = (&full_input[ph_offset.into()..]).chunks(ph_entsize);
+        let ph_slices = (&full_input[ph_offset.into()..]).chunks(*ph_entsize);
         let mut program_headers = Vec::new();
-        for ph_slice in ph_slices.take(ph_count) {
+        for ph_slice in ph_slices.take(*ph_count) {
             let (_, ph) = ProgramHeader::parse(full_input, ph_slice)?;
             program_headers.push(ph);
         }
