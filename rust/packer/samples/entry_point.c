@@ -1,3 +1,5 @@
+// in `elk/samples/entry_point.c`
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>

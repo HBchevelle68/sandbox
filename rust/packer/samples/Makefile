@@ -1,20 +1,25 @@
 NASM_CC=nasm
 NASM_CCFLAGS=-f elf64
-LINKER=ld
+LD=ld
 
 CC=gcc
 
+TGTS= hello nodata entry_point
 
 .PHONY: clean
 
-all: hello entry_point
+all: $(TGTS)
 
-hello:  hello.asm
+hello: hello.asm
 	$(NASM_CC) $(NASM_CCFLAGS) $< -o $@.o
-	$(LINKER) $@.o -o $@
+	$(LD) $@.o -o $@
+
+nodata: nodata.asm
+	$(NASM_CC) $(NASM_CCFLAGS) $< -o $@.o
+	$(LD) $@.o -o $@
 
 entry_point: entry_point.c
 	$(CC) $< -o $@
 
 clean:
-	rm -f *.o hello entry_point
+	rm -f *.o $(TGTS)
