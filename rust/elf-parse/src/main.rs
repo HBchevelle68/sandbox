@@ -1,7 +1,5 @@
 use goblin::{error, Object};
-use std::env;
-use std::fs;
-use std::path::Path;
+use std::{env, fs, path::PathBuf};
 
 // ELF Header:
 //   Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
@@ -24,18 +22,19 @@ use std::path::Path;
 //   Number of section headers:         31
 //   Section header string table index: 30
 
-fn parse_elf_header(elf: goblin::elf::Elf) -> error::Result<()> {
-    //println!("elf: {:#?}", &elf);
-    println!("ELF Header:");
-    print!("\tMagic:\t ");
-    for m in elf.header.e_ident.into_iter() {
-        print!("{:X}    ", m);
-    }
-    println!("\n\tClass:\t {}")
-    //println!("elf: {:#?}", &elf.header);
-    println!("elf: {:#?}", &elf.header.e_ident);
-    Ok(())
-}
+// fn parse_elf_header(elf: goblin::elf::Elf) -> error::Result<()> {
+//     //println!("elf: {:#?}", &elf);
+//     println!("ELF Header:");
+//     print!("\tMagic:\t ");
+//     for m in elf.header.e_ident.into_iter() {
+//         print!("{:X}    ", m);
+//     }
+//     println!("\n\tClass:\t {}")
+//     //println!("elf: {:#?}", &elf.header);
+//     println!("elf: {:#?}", &elf.header.e_ident);
+//     Ok(())
+// }
+
 fn main() -> error::Result<()> {
     for (i, arg) in env::args().enumerate() {
         if i == 1 {
