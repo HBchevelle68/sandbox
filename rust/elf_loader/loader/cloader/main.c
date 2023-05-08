@@ -3,8 +3,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
 #include <elf.h>
+
+#ifdef INSTRUCTOR
+#include "instructor.h"
+#endif
 
 #define RESULT_ONE_THEN_DONE \
     do                       \
@@ -59,6 +62,15 @@ int main(int argc, char **argv)
         }
         printf("[*] Read: %zd bytes\n", bytes_read);
     }
+    close(fd);
+    fd = -1;
+
+#ifdef INSTRUCTOR
+    uint64_t addr = 0;
+    addr = instructor_load(file_data, bytes_read);
+
+    result = instructor_jump(addr);
+#endif
 
     // End setup
 

@@ -19,9 +19,15 @@ fn build_hello() {
 }
 
 fn build_c_loader() {
-    // Build example with debug
+    // Build INSTRUCTOR example with debug
     let status = Command::new("gcc")
-        .args(["cloader/main.c", "-g", "-o", "cloader/cloader_debug"])
+        .args([
+            "cloader/main.c",
+            "-g",
+            "-DINSTRUCTOR",
+            "-o",
+            "cloader/cloader_debug",
+        ])
         .status()
         .unwrap();
 
