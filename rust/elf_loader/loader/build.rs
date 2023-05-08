@@ -23,13 +23,14 @@ fn build_c_loader() {
     let status = Command::new("gcc")
         .args([
             "cloader/main.c",
+            "cloader/instructor.c",
             "-g",
             "-DINSTRUCTOR",
             "-o",
             "cloader/cloader_debug",
         ])
         .status()
-        .unwrap();
+        .expect("Failed to build CLOADER");
 
     assert!(status.success());
 }

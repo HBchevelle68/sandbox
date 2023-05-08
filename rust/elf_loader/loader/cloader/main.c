@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <elf.h>
 
 #ifdef INSTRUCTOR
@@ -19,9 +21,9 @@
 int main(int argc, char **argv)
 {
     struct stat stat_buf = {0};
-    uint8_t *file_data = NULL;
     int fd = -1;
     int result = 0;
+    uint8_t *file_data = NULL;
     ssize_t bytes_read = 0;
 
     // Basic setup
@@ -64,15 +66,19 @@ int main(int argc, char **argv)
     }
     close(fd);
     fd = -1;
+    // End setup
 
 #ifdef INSTRUCTOR
     uint64_t addr = 0;
     addr = instructor_load(file_data, bytes_read);
-
+    if (0 == addr)
+    {
+        printf("[-] Error instructor load!!\n");
+        RESULT_ONE_THEN_DONE;
+    }
     result = instructor_jump(addr);
-#endif
 
-    // End setup
+#endif
 
 done:
     // Clean up time
