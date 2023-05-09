@@ -20,31 +20,50 @@
 
 #include "instructor.h"
 
-static int is_elf(Elf64_Ehdr *hdr)
+static int is_elf64(Elf64_Ehdr *hdr)
 {
-    // Found online, slightly modified
+    int result = 0;
+    // Check its an ELF
     if (!strncmp((char *)hdr->e_ident, "\177ELF", 4))
     {
-        // Is ELF
-        printf("[+] ELFMAGIC Match!\n");
-        return 1;
+        printf("[+] ELF Magic Match\n");
+        // Check its also 64-bit
+        if (ELFCLASS64 == hdr->e_ident[EI_CLASS])
+        {
+            printf("[+] ELF is 64-bit\n");
+            result = 1;
+        }
+        else
+        {
+            printf("[-] 32-bit ELF's not supported");
+        }
     }
-    printf("[-] ELFMAGIC mismatch!\n");
-    return 0;
+    else
+    {
+        printf("[-] ELFMAGIC mismatch!\n");
+    }
+
+    return result;
 }
+
+static int parse_elf_hdr() {}
 
 uint64_t instructor_load(uint8_t *fdata, size_t size)
 {
     uint64_t addr = 0;
+    Elf64_Ehdr *hdr = (Elf64_Ehdr *)fdata;
 
     printf("** Begin Loading Elf **\n");
 
-    if (0 == is_elf((Elf64_Ehdr *)fdata))
+    if (0 == is_elf64((Elf64_Ehdr *)fdata))
     {
-        ADDR_0_THEN_DONE;
+        ADDR_ZERO_THEN_DONE;
     }
 
+    printf("[+] Entry point: 0x%X\n", hdr->e_entry);
+
 done:
+    printf("** End Loading Elf **\n");
     return addr;
 }
 

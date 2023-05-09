@@ -54,6 +54,8 @@ fn main() {
     build_c_loader();
 
     println!("cargo:rerun-if-changed=samples/hello.asm");
+    println!("cargo:rerun-if-changed=samples/entry_point.c");
     println!("cargo:rerun-if-changed=cloader/main.c");
     println!("cargo:rerun-if-changed=cloader/instructor.c");
+    println!("cargo:rerun-if-changed=cloader/instructor.h");
 }

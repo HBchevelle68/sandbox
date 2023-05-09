@@ -27,7 +27,6 @@ int main(int argc, char **argv)
     ssize_t bytes_read = 0;
 
     // Basic setup
-
     if (2 != argc)
     {
         printf("usage: cloader FILE\n");
@@ -48,12 +47,16 @@ int main(int argc, char **argv)
         printf("[-] Error file stat. errno: %d\n", errno);
         RESULT_ONE_THEN_DONE;
     }
+    // Allocate zero initialize memory to store binary
     file_data = calloc(stat_buf.st_size, sizeof(uint8_t));
     if (NULL == file_data)
     {
         printf("[-] Error allocating buffer. errno: %d\n", errno);
         RESULT_ONE_THEN_DONE;
     }
+    // Loop reading until we've read ll bytes
+    // For students:
+    // Curious why we need to loop? Execute `man 2 read` to find out! :)
     while (bytes_read != stat_buf.st_size)
     {
         bytes_read = read(fd, (uint8_t *)file_data + bytes_read, stat_buf.st_size - bytes_read);
@@ -77,8 +80,10 @@ int main(int argc, char **argv)
         RESULT_ONE_THEN_DONE;
     }
     result = instructor_jump(addr);
-
 #endif
+
+    // STUDENTS
+    // YOUR CODE HERE
 
 done:
     // Clean up time
