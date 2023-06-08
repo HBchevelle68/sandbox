@@ -6,8 +6,8 @@
  * the material that is WITHIN the scope of the class.
  *
  * To prevent any leakage, lets keep to some guidlines:
- * - ALL functions must follow the formate "instructor_<your function>"
- * - ALL functions with the exception of instructor_load and instructor_jump
+ * - Functions follow the format "instructor_<your function>"
+ * - Functions with the exception of instructor_load and instructor_jump
  * should be static functions. This prevents accidental usage outside
  * their intended bounds
  *

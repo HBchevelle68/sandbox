@@ -11,5 +11,5 @@ delf = { version = "0.1.0", path = "../delf" }
 region = "2"
 
 [build-dependencies]
-cc = "1.0.78"
+cc = "*"
 gcc = "*"
