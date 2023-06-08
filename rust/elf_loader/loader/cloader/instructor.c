@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <elf.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include "instructor.h"
 
@@ -276,7 +277,6 @@ static void print_elf64_header(Elf64_Ehdr *e64_hdr)
     printf("\n"); /* End of ELF header */
 }
 // PROGRAM HEADERS
-
 static void print_elf64_progheader_flags(Elf64_Word flag)
 {
     char flgstr[3] = {'.', '.', '.'};
@@ -319,7 +319,6 @@ static void print_elf64_progheaders(Elf64_Ehdr *e64_hdr)
         printf("\n");
     }
 }
-
 static int parse_elf64_progheadrs(Elf64_Ehdr *e64hdr, uint8_t *fdata)
 {
     // Helper ptr
@@ -343,7 +342,6 @@ static int parse_elf64_progheadrs(Elf64_Ehdr *e64hdr, uint8_t *fdata)
 done:
     return result;
 }
-
 // END PROGRAM HEADERS
 // SECTION HEADERS
 /**
@@ -413,6 +411,22 @@ static int parse_elf64_secheaders(Elf64_Ehdr *e64hdr, uint8_t *fdata)
 done:
     return result;
 }
+// END SECTION HEADERS
+
+static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata)
+{
+    int result = 0;
+    Elf64_Phdr *phdrs = elf_to_load.phdr_table;
+    for (int i = 0; i < e64_hdr->e_shnum; i++)
+    {
+        if (PT_LOAD == phdrs[i].p_type)
+        {
+            mmap(phdrs[i].p_vaddr, );
+        }
+    }
+done:
+    return result;
+}
 
 uint64_t instructor_load(uint8_t *fdata, size_t size)
 {
@@ -440,6 +454,11 @@ uint64_t instructor_load(uint8_t *fdata, size_t size)
     }
     print_elf64_secheaders(e64_hdr, fdata);
 
+    // Map Text segment
+    for (int i = 0; i < e64_hdr->e_phnum; i++)
+    {
+    }
+    // mmap(NULL, )
 done:
     printf("** End Loading Elf **\n");
     return addr;
