@@ -54,9 +54,7 @@ int main(int argc, char **argv)
         printf("[-] Error allocating buffer. errno: %d\n", errno);
         RESULT_ONE_THEN_DONE;
     }
-    // Loop reading until we've read ll bytes
-    // For students:
-    // Curious why we need to loop? Execute `man 2 read` to find out! :)
+    // Loop reading until we've read all bytes
     while (bytes_read != stat_buf.st_size)
     {
         bytes_read = read(fd, (uint8_t *)file_data + bytes_read, stat_buf.st_size - bytes_read);

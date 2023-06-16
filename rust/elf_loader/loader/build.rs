@@ -18,6 +18,22 @@ fn build_hello() {
     assert!(status.success());
 }
 
+fn build_nodata() {
+    // Build nodata.asm
+    let status = Command::new("nasm")
+        .args(["-f", "elf64", "samples/nodata.asm"])
+        .status()
+        .expect("Failed to assemble nodata.asm");
+    assert!(status.success());
+
+    let status = Command::new("ld")
+        .args(["samples/nodata.o", "-o", "samples/nodata"])
+        .status()
+        .expect("Failed to link nodata.o");
+
+    assert!(status.success());
+}
+
 fn build_entry_point() {
     let status = Command::new("gcc")
         .args(["samples/entry_point.c", "-g", "-o", "samples/entry_point"])
@@ -29,6 +45,7 @@ fn build_entry_point() {
 
 fn build_samples() {
     build_hello();
+    build_nodata();
     build_entry_point();
 }
 
@@ -54,6 +71,7 @@ fn main() {
     build_c_loader();
 
     println!("cargo:rerun-if-changed=samples/hello.asm");
+    println!("cargo:rerun-if-changed=samples/nodata.asm");
     println!("cargo:rerun-if-changed=samples/entry_point.c");
     println!("cargo:rerun-if-changed=cloader/main.c");
     println!("cargo:rerun-if-changed=cloader/instructor.c");
