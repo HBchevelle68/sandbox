@@ -1,5 +1,7 @@
 // in `elk/src/main.rs`
 
+use mmap::{MapOption, MemoryMap};
+use region::{protect, Protection};
 use std::{env, error::Error, fs};
 
 fn ndisasm(code: &[u8], origin: delf::Addr) -> Result<(), Box<dyn Error>> {
@@ -117,5 +119,4 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
-}
 }

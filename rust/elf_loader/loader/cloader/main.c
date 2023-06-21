@@ -77,6 +77,7 @@ int main(int argc, char **argv)
         printf("[-] Error instructor load!!\n");
         RESULT_ONE_THEN_DONE;
     }
+    printf("[!] Jumping to 0x08X\n", addr);
     result = instructor_jump(addr);
 #endif
 

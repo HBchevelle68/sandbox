@@ -18,8 +18,22 @@
 #include <elf.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <errno.h>
 
 #include "instructor.h"
+
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS 0x20 /* Don't use a file.  */
+#endif
+
+#define MAXADDRS 100
+// TODO
+// Keeping this? Or just inline assembly?
+// Should this be shared with students??
+// Entry point of loaded binary in as a func ptr
+void (*foo)(void);
+
+void *mapped_addrs[MAXADDRS];
 
 static ielf_t elf_to_load;
 
@@ -419,9 +433,30 @@ static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata)
     Elf64_Phdr *phdrs = elf_to_load.phdr_table;
     for (int i = 0; i < e64_hdr->e_shnum; i++)
     {
+        int prot = 0;
+        void *res = NULL;
         if (PT_LOAD == phdrs[i].p_type)
         {
-            mmap(phdrs[i].p_vaddr, );
+            printf("[+] Loading segment @ 0x%08X..0x%08X with perms: ", phdrs[i].p_vaddr, phdrs[i].p_vaddr + phdrs[i].p_memsz);
+            print_elf64_progheader_flags(phdrs[i].p_flags);
+            printf("\n");
+            if (phdrs[i].p_flags & PF_R)
+            {
+                prot |= PROT_READ;
+            }
+            if (phdrs[i].p_flags & PF_W)
+            {
+                prot |= PROT_WRITE;
+            }
+            if (phdrs[i].p_flags & PF_X)
+            {
+                prot |= PROT_EXEC;
+            }
+            res = mmap(phdrs[i].p_vaddr, phdrs[i].p_memsz, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            if (MAP_FAILED == res)
+            {
+                perror("[!] mmap() failed!\n");
+            }
         }
     }
 done:
@@ -445,6 +480,8 @@ uint64_t instructor_load(uint8_t *fdata, size_t size)
     {
         ADDR_ZERO_THEN_DONE;
     }
+
+    // No return
     print_elf64_progheaders(e64_hdr);
 
     // Section Headers
@@ -452,16 +489,19 @@ uint64_t instructor_load(uint8_t *fdata, size_t size)
     {
         ADDR_ZERO_THEN_DONE;
     }
+
+    // No return
     print_elf64_secheaders(e64_hdr, fdata);
 
-    // Map Text segment
-    for (int i = 0; i < e64_hdr->e_phnum; i++)
+    if (map_loadable_segments(e64_hdr, fdata))
     {
+        ADDR_ZERO_THEN_DONE;
     }
-    // mmap(NULL, )
+
 done:
     printf("** End Loading Elf **\n");
-    return addr;
+    foo = (void (*)())e64_hdr->e_entry;
+    return e64_hdr->e_entry;
 }
 
 /**
@@ -473,7 +513,7 @@ done:
  */
 int instructor_jump(uint64_t)
 {
-
+    foo();
     return 0;
 }
 
@@ -485,4 +525,6 @@ void instructor_clean()
 {
     FREE_IF_VALID(elf_to_load.phdr_table);
     FREE_IF_VALID(elf_to_load.shdr_table);
+    // TODO
+    // Add unmapping of loaded segments!!
 }
