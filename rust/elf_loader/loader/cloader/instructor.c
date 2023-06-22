@@ -26,14 +26,40 @@
 #define MAP_ANONYMOUS 0x20 /* Don't use a file.  */
 #endif
 
-#define MAXADDRS 100
 // TODO
 // Keeping this? Or just inline assembly?
 // Should this be shared with students??
 // Entry point of loaded binary in as a func ptr
 void (*foo)(void);
 
-void *mapped_addrs[MAXADDRS];
+typedef struct MappedAddr
+{
+    void *addr;
+    size_t size;
+} maddr_t;
+
+// Lets avoid yet another memory alloc
+#define MAXADDRS 100
+static maddr_t mapped_addrs[MAXADDRS];
+static size_t addr_count;
+
+static int add_mapping(void *addr, size_t size)
+{
+    int result = 0;
+    if (MAXADDRS == addr_count)
+    {
+        printf("[!] Max mappable segments reached!\n");
+        result = -1;
+        goto done;
+    }
+
+    mapped_addrs[addr_count].addr = addr;
+    mapped_addrs[addr_count].size = size;
+    addr_count++;
+
+done:
+    return result;
+}
 
 static ielf_t elf_to_load;
 
@@ -290,6 +316,7 @@ static void print_elf64_header(Elf64_Ehdr *e64_hdr)
 
     printf("\n"); /* End of ELF header */
 }
+
 // PROGRAM HEADERS
 static void print_elf64_progheader_flags(Elf64_Word flag)
 {
@@ -463,11 +490,16 @@ static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata)
                 perror("[!] mmap() failed!\n");
             }
 
+            add_mapping(res, phdrs[i].p_memsz);
+
             // Copy segment into memory
             memcpy(res, fdata + phdrs[i].p_offset, phdrs[i].p_memsz);
 
             // Now set proper permissions
-            mprotect(res, phdrs[i].p_memsz, prot);
+            if (-1 == mprotect(res, phdrs[i].p_memsz, prot))
+            {
+                perror("[!] mprotect failed!\n");
+            }
         }
     }
 done:
@@ -511,7 +543,7 @@ uint64_t instructor_load(uint8_t *fdata, size_t size)
 
 done:
     printf("** End Loading Elf **\n");
-    foo = (void (*)())e64_hdr->e_entry;
+    // foo = (void (*)())e64_hdr->e_entry;
     return e64_hdr->e_entry;
 }
 
@@ -522,22 +554,33 @@ done:
  *
  * TODO Fill this out
  */
-int instructor_jump(uint64_t)
+int instructor_jump(uint64_t entry)
 {
-    printf("[+] Jumping to %p\n", foo);
+    foo = (void (*)())entry;
+    printf("[+] Jumping to 0x%p\n", foo);
     foo();
-    printf("andddd were back\n");
+    printf("we're back?????\n");
     return 0;
 }
 
 /**
- * @brief Clean up our helper global
+ * @brief Clean up time!
+ * @warning This should only ever get called if a failure occurs
+ * and its just good practice to be cleaning up. Since we'll jump to
+ * our loaded program and that will exit, we'll never arrive here post
+ * jump
  * @return N/A
  */
 void instructor_clean()
 {
     FREE_IF_VALID(elf_to_load.phdr_table);
     FREE_IF_VALID(elf_to_load.shdr_table);
-    // TODO
-    // Add unmapping of loaded segments!!
+    for (int i = 0; i < MAXADDRS; i++)
+    {
+        if (NULL != mapped_addrs[i].addr)
+        {
+            // At this point if it fails...oh well
+            munmap(mapped_addrs[i].addr, mapped_addrs[i].size);
+        }
+    }
 }
