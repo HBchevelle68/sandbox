@@ -437,9 +437,12 @@ static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata)
         void *res = NULL;
         if (PT_LOAD == phdrs[i].p_type)
         {
+            // TODO make this cleaner...
             printf("[+] Loading segment @ 0x%08X..0x%08X with perms: ", phdrs[i].p_vaddr, phdrs[i].p_vaddr + phdrs[i].p_memsz);
             print_elf64_progheader_flags(phdrs[i].p_flags);
             printf("\n");
+
+            // Build out memory permission flag
             if (phdrs[i].p_flags & PF_R)
             {
                 prot |= PROT_READ;
@@ -452,11 +455,19 @@ static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata)
             {
                 prot |= PROT_EXEC;
             }
-            res = mmap(phdrs[i].p_vaddr, phdrs[i].p_memsz, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+            // Initially just make it easy and make everything writable
+            res = mmap(phdrs[i].p_vaddr, phdrs[i].p_memsz, PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
             if (MAP_FAILED == res)
             {
                 perror("[!] mmap() failed!\n");
             }
+
+            // Copy segment into memory
+            memcpy(res, fdata + phdrs[i].p_offset, phdrs[i].p_memsz);
+
+            // Now set proper permissions
+            mprotect(res, phdrs[i].p_memsz, prot);
         }
     }
 done:
@@ -513,7 +524,9 @@ done:
  */
 int instructor_jump(uint64_t)
 {
+    printf("[+] Jumping to %p\n", foo);
     foo();
+    printf("andddd were back\n");
     return 0;
 }
 
