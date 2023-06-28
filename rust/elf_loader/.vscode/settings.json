@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "mman.h": "c",
+        "instructor.h": "c",
+        "mman-map-flags-generic.h": "c",
+        "mman-linux.h": "c"
+    }
+}
