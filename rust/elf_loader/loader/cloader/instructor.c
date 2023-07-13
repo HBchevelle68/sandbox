@@ -497,7 +497,7 @@ static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata, uint64_t *
 
             // Need to make sure to adjust for proper page aligned
             // memory addresses when calling mmap
-            size_t aligned_addr = align_lo;
+            size_t aligned_addr = align_lo(addr);
             printf("Addr: 0x%08X Aligned Addr: 0x%08X", addr, aligned_addr);
 
             // Get the amount of padding in bytes
@@ -524,9 +524,10 @@ static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata, uint64_t *
             }
 
             // Again, overkill but lets track our mmap'd regions
-            add_mapping(res, phdrs[i].p_memsz);
+            add_mapping(res, segment_len);
 
             // Copy segment into memory
+            // Use actual length, not padded length
             memcpy(res, fdata + phdrs[i].p_offset, phdrs[i].p_memsz);
 
             // Build out memory permission flag
@@ -547,7 +548,7 @@ static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata, uint64_t *
             }
 
             // Now set proper permissionss
-            if (-1 == mprotect(res, phdrs[i].p_memsz, prot))
+            if (-1 == mprotect(res, segment_len, prot))
             {
                 perror("[!] mprotect failed!\n");
                 result = 1;
