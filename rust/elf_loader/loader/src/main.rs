@@ -77,15 +77,23 @@ fn main() -> Result<(), Box<dyn Error>> {
         .program_headers
         .iter()
         .filter(|ph| ph.r#type == delf::SegmentType::Load)
+        // ignore zero-length segments
+        .filter(|ph| ph.mem_range().end > ph.mem_range().start)
     {
         println!("Mapping segment @ {:?} with {:?}", ph.mem_range(), ph.flags);
         let mem_range = ph.mem_range();
+        dbg!(&mem_range);
         let len: usize = (mem_range.end - mem_range.start).into();
+        dbg!(&len);
 
         let start: usize = mem_range.start.0 as usize + base;
+        println!("start: {:08x}", &start);
         let aligned_start: usize = align_lo(start);
+        println!("aligned start {:08x}", &aligned_start);
         let padding = start - aligned_start;
+        dbg!(&padding);
         let len = len + padding;
+        dbg!(&len);
 
         let addr: *mut u8 = aligned_start as _;
         println!("Addr: {:p}, Padding: {:08x}", addr, padding);

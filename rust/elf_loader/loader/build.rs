@@ -34,6 +34,29 @@ fn build_nodata() {
     assert!(status.success());
 }
 
+fn build_hello_pie() {
+    // Build hello_pie.asm
+    let status = Command::new("nasm")
+        .args(["-f", "elf64", "samples/hello_pie.asm"])
+        .status()
+        .expect("Failed to assemble hello_pie.asm");
+    assert!(status.success());
+
+    let status = Command::new("ld")
+        .args([
+            "--dynamic-linker",
+            "/lib64/ld-linux-x86-64.so.2",
+            "-pie",
+            "samples/hello_pie.o",
+            "-o",
+            "samples/hello_pie",
+        ])
+        .status()
+        .expect("Failed to link hello_pie.o");
+
+    assert!(status.success());
+}
+
 fn build_entry_point() {
     let status = Command::new("gcc")
         .args(["samples/entry_point.c", "-g", "-o", "samples/entry_point"])
@@ -46,6 +69,7 @@ fn build_entry_point() {
 fn build_samples() {
     build_hello();
     build_nodata();
+    build_hello_pie();
     build_entry_point();
 }
 
@@ -70,8 +94,12 @@ fn main() {
     build_samples();
     build_c_loader();
 
+    // Assembly
     println!("cargo:rerun-if-changed=samples/hello.asm");
     println!("cargo:rerun-if-changed=samples/nodata.asm");
+    println!("cargo:rerun-if-changed=samples/hello_pie.asm");
+
+    // C Loader
     println!("cargo:rerun-if-changed=samples/entry_point.c");
     println!("cargo:rerun-if-changed=cloader/main.c");
     println!("cargo:rerun-if-changed=cloader/instructor.c");

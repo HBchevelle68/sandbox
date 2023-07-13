@@ -26,12 +26,17 @@
 #define MAP_ANONYMOUS 0x20 /* Don't use a file.  */
 #endif
 
+// Lazy global
+// Grab what we need,
+static ielf_t elf_to_load;
+
 // TODO
 // Keeping this? Or just inline assembly?
 // Should this be shared with students??
-// Entry point of loaded binary in as a func ptr
+// Entry point of loaded binary as a func ptr
 void (*foo)(void);
 
+// Helps keep track of mmap'd segments
 typedef struct MappedAddr
 {
     void *addr;
@@ -39,10 +44,14 @@ typedef struct MappedAddr
 } maddr_t;
 
 // Lets avoid yet another memory alloc
+// Just keep this big enough to not worry
 #define MAXADDRS 100
 static maddr_t mapped_addrs[MAXADDRS];
 static size_t addr_count;
 
+/**
+ * TODO document
+ */
 static int add_mapping(void *addr, size_t size)
 {
     int result = 0;
@@ -60,8 +69,6 @@ static int add_mapping(void *addr, size_t size)
 done:
     return result;
 }
-
-static ielf_t elf_to_load;
 
 static int is_elf64(Elf64_Ehdr *hdr)
 {
@@ -130,6 +137,7 @@ static void print_elf64_header(Elf64_Ehdr *e64_hdr)
     }
 
     /* OS ABI */
+    // Not needed but it was free
     printf("OS ABI\t\t= ");
     switch (e64_hdr->e_ident[EI_OSABI])
     {
@@ -454,20 +462,72 @@ done:
 }
 // END SECTION HEADERS
 
-static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata)
+// Yes this technically can be different on
+// other systems but not a concern for us
+#define PGSIZE 4096
+/**
+ * Truncates a usize value to the left-adjacent (low) 4KiB boundary.
+ */
+size_t align_lo(size_t x)
+{
+    return (x & ~(PGSIZE - 1));
+}
+
+static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata, uint64_t *out_entry_point)
 {
     int result = 0;
     Elf64_Phdr *phdrs = elf_to_load.phdr_table;
+    size_t base_addr = 0x400000;
+
     for (int i = 0; i < e64_hdr->e_shnum; i++)
     {
         int prot = 0;
         void *res = NULL;
-        if (PT_LOAD == phdrs[i].p_type)
+
+        // It's possible for a segment to be marked
+        // loadable and with a memory size of 0
+        // skip those segments
+        if (PT_LOAD == phdrs[i].p_type && 0 != phdrs[i].p_memsz)
         {
-            // TODO make this cleaner...
-            printf("[+] Loading segment @ 0x%08X..0x%08X with perms: ", phdrs[i].p_vaddr, phdrs[i].p_vaddr + phdrs[i].p_memsz);
+
+            // Its possible to have binaries where the first
+            // PT_LOAD segment vaddr is 0, this prevents the kernel
+            // from deciding our segments memory mapped location
+            size_t addr = base_addr + phdrs[i].p_vaddr;
+
+            // Need to make sure to adjust for proper page aligned
+            // memory addresses when calling mmap
+            size_t aligned_addr = align_lo;
+            printf("Addr: 0x%08X Aligned Addr: 0x%08X", addr, aligned_addr);
+
+            // Get the amount of padding in bytes
+            size_t padding = addr - aligned_addr;
+
+            // Adjust our now true length
+            size_t segment_len = phdrs[i].p_memsz + padding;
+
+            // TODO
+            // make this print cleaner...
+            printf("[+] Loading segment @ 0x%08X..0x%08X with perms: ", aligned_addr, segment_len);
             print_elf64_progheader_flags(phdrs[i].p_flags);
             printf("\n");
+
+            // Initially just make it easy and make everything writable
+            // We'll need to copy the segment into our mmap'd region
+            res = mmap(aligned_addr, segment_len, PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            if (MAP_FAILED == res)
+            {
+                perror("[!] mmap() failed!\n");
+                printf("Errno: %d", errno);
+                result = 1;
+                goto done;
+            }
+
+            // Again, overkill but lets track our mmap'd regions
+            add_mapping(res, phdrs[i].p_memsz);
+
+            // Copy segment into memory
+            memcpy(res, fdata + phdrs[i].p_offset, phdrs[i].p_memsz);
 
             // Build out memory permission flag
             if (phdrs[i].p_flags & PF_R)
@@ -481,24 +541,17 @@ static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata)
             if (phdrs[i].p_flags & PF_X)
             {
                 prot |= PROT_EXEC;
+                // Found our executable segment
+                // set out variable for entry point
+                *out_entry_point = aligned_addr;
             }
 
-            // Initially just make it easy and make everything writable
-            res = mmap(phdrs[i].p_vaddr, phdrs[i].p_memsz, PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-            if (MAP_FAILED == res)
-            {
-                perror("[!] mmap() failed!\n");
-            }
-
-            add_mapping(res, phdrs[i].p_memsz);
-
-            // Copy segment into memory
-            memcpy(res, fdata + phdrs[i].p_offset, phdrs[i].p_memsz);
-
-            // Now set proper permissions
+            // Now set proper permissionss
             if (-1 == mprotect(res, phdrs[i].p_memsz, prot))
             {
                 perror("[!] mprotect failed!\n");
+                result = 1;
+                goto done;
             }
         }
     }
@@ -508,8 +561,8 @@ done:
 
 uint64_t instructor_load(uint8_t *fdata, size_t size)
 {
-    uint64_t addr = 0;
     Elf64_Ehdr *e64_hdr = (Elf64_Ehdr *)fdata;
+    uint64_t addr = e64_hdr->e_entry;
 
     printf("** Begin Loading Elf **\n");
 
@@ -536,7 +589,7 @@ uint64_t instructor_load(uint8_t *fdata, size_t size)
     // No return
     print_elf64_secheaders(e64_hdr, fdata);
 
-    if (map_loadable_segments(e64_hdr, fdata))
+    if (map_loadable_segments(e64_hdr, fdata, &addr))
     {
         ADDR_ZERO_THEN_DONE;
     }
@@ -544,7 +597,7 @@ uint64_t instructor_load(uint8_t *fdata, size_t size)
 done:
     printf("** End Loading Elf **\n");
     // foo = (void (*)())e64_hdr->e_entry;
-    return e64_hdr->e_entry;
+    return addr;
 }
 
 /**
