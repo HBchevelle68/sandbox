@@ -466,14 +466,27 @@ done:
 // other systems but not a concern for us
 #define PGSIZE 4096
 /**
- * Truncates a usize value to the left-adjacent (low) 4KiB boundary.
+ * @brief Truncates a size_t value to the left-adjacent (low) 4KiB boundary.
+ *
+ * @return size_t
  */
 size_t align_lo(size_t x)
 {
-    return (x & ~(PGSIZE - 1));
+    return (x & ~0xFFF);
 }
 
-static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata, uint64_t *out_entry_point)
+/**
+ * @brief Loads all segments marked with PT_LOAD && has a segment
+ * size > 0. Lastly sets all newly mapped regions to the proper
+ * permissions
+ *
+ * @param[in] e64_hdr: ptr to elf header of target bin
+ * @param[in] fdata; raw target bin data
+ * @param[out] entry_point: ptr to entry point out var
+ *
+ * @return
+ */
+static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata, uint64_t *entry_point)
 {
     int result = 0;
     Elf64_Phdr *phdrs = elf_to_load.phdr_table;
@@ -484,21 +497,24 @@ static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata, uint64_t *
         int prot = 0;
         void *res = NULL;
 
-        // It's possible for a segment to be marked
-        // loadable and with a memory size of 0
-        // skip those segments
+        /**
+         * It's possible for a segment to be marked
+         * loadable and with a memory size of 0
+         * skip those segments
+         */
         if (PT_LOAD == phdrs[i].p_type && 0 != phdrs[i].p_memsz)
         {
 
-            // Its possible to have binaries where the first
-            // PT_LOAD segment vaddr is 0, this prevents the kernel
-            // from deciding our segments memory mapped location
-            size_t addr = base_addr + phdrs[i].p_vaddr;
+            /**
+             * It is possible to have binaries where the first
+             * PT_LOAD segment vaddr is 0, this prevents the kernel
+             * from deciding our segments memory mapped location
+             */
+            size_t addr = base_addr + phdrs[i].p_offset;
 
-            // Need to make sure to adjust for proper page aligned
-            // memory addresses when calling mmap
+            // Need to make sure to adjust for proper page
+            // aligned memory addresses when calling mmap
             size_t aligned_addr = align_lo(addr);
-            printf("Addr: 0x%08X Aligned Addr: 0x%08X", addr, aligned_addr);
 
             // Get the amount of padding in bytes
             size_t padding = addr - aligned_addr;
@@ -526,9 +542,16 @@ static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata, uint64_t *
             // Again, overkill but lets track our mmap'd regions
             add_mapping(res, segment_len);
 
-            // Copy segment into memory
-            // Use actual length, not padded length
-            memcpy(res, fdata + phdrs[i].p_offset, phdrs[i].p_memsz);
+            /**
+             * Copy segment into memory
+             *
+             * Copy FROM the elf we are loading using the actual size,
+             * not the padded size.
+             * NOTE: We must offset into our memory mapped regions based on our
+             * padding, this is so any rip relative addressing will still
+             * be correct!!...ask me how i know *cries in gdb*
+             */
+            memcpy(res + padding, fdata + phdrs[i].p_offset, phdrs[i].p_memsz);
 
             // Build out memory permission flag
             if (phdrs[i].p_flags & PF_R)
@@ -544,7 +567,7 @@ static int map_loadable_segments(Elf64_Ehdr *e64_hdr, uint8_t *fdata, uint64_t *
                 prot |= PROT_EXEC;
                 // Found our executable segment
                 // set out variable for entry point
-                *out_entry_point = aligned_addr;
+                *entry_point = aligned_addr;
             }
 
             // Now set proper permissionss
@@ -597,23 +620,32 @@ uint64_t instructor_load(uint8_t *fdata, size_t size)
 
 done:
     printf("** End Loading Elf **\n");
-    // foo = (void (*)())e64_hdr->e_entry;
     return addr;
 }
 
 /**
- * @brief Jump to our loaded elf
- * @param
- * @return
- *
- * TODO Fill this out
+ * @brief Jump to our in-memory loaded elf
+ * @param[in] entry 64-bit address to entry point
+ * @return Technically can return an int, but we shouldn't
+ * be returning at all once we jump
  */
 int instructor_jump(uint64_t entry)
 {
-    foo = (void (*)())entry;
-    printf("[+] Jumping to 0x%p\n", foo);
-    foo();
-    printf("we're back?????\n");
+    if (0 == entry)
+    {
+        printf("[-] ERROR! Provided a bad entry point address!\n");
+    }
+    else
+    {
+        /**
+         * This is a cheezy way and doesn't account for cmdline args, etc
+         * but is plenty good enough for teaching purposes
+         */
+        foo = (void (*)())entry;
+        printf("[+] Jumping to 0x%p\n", foo);
+        foo();
+        printf("we're back?????\n");
+    }
     return 0;
 }
 

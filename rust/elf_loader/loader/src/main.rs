@@ -58,14 +58,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
     println!("{:#?}", file);
 
-    println!("Disassembling {:?}...", input_path);
-    let code_ph = file
-        .program_headers
-        .iter()
-        .find(|ph| ph.mem_range().contains(&file.entry_point))
-        .expect("segment with entry point not found");
+    // println!("Disassembling {:?}...", input_path);
+    // let code_ph = file
+    //     .program_headers
+    //     .iter()
+    //     .find(|ph| ph.mem_range().contains(&file.entry_point))
+    //     .expect("segment with entry point not found");
 
-    ndisasm(&code_ph.data[..], file.entry_point)?;
+    // ndisasm(&code_ph.data[..], file.entry_point)?;
 
     //**********************************************************************
 
